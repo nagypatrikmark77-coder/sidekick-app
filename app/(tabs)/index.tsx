@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -36,6 +36,84 @@ const PRIORITY_COLORS = {
   medium: COLORS.warning,
   low: COLORS.success,
 };
+
+function QuickHabitItem({
+  habit,
+  onToggle,
+  completing,
+}: {
+  habit: Habit;
+  onToggle: (habit: Habit) => void;
+  completing: string | null;
+}) {
+  const [completed, setCompleted] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkCompletion = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const log = await habitLogsService.getLogForDate(habit.id, today);
+      setCompleted(log ? log.count >= habit.target_count : false);
+      setLoading(false);
+    };
+    checkCompletion();
+  }, [habit.id, habit.target_count]);
+
+  return (
+    <TouchableOpacity
+      style={styles.quickHabitItem}
+      onPress={() => onToggle(habit)}
+      disabled={completing === habit.id || loading}
+    >
+      <View style={[styles.quickHabitCheck, completed && styles.quickHabitCheckCompleted]}>
+        {completed && (
+          <Feather name="check" size={14} color={COLORS.textWhite} />
+        )}
+      </View>
+      <Text style={styles.quickHabitText} numberOfLines={1}>
+        {habit.icon} {habit.name}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function ProjectCard({
+  project,
+  onPress,
+}: {
+  project: Project;
+  onPress: () => void;
+}) {
+  const [noteCount, setNoteCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCount = async () => {
+      try {
+        const notes = await notesService.getNotes(project.id);
+        setNoteCount(notes.length);
+      } catch (error) {
+        console.error('Error loading note count:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCount();
+  }, [project.id]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.projectCard, { borderLeftColor: project.color, borderLeftWidth: 4 }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.projectName}>{project.name}</Text>
+      <Text style={styles.projectCount}>
+        {loading ? '...' : `${noteCount} jegyzet`}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 function CircularProgress({ progress, size = 80 }: { progress: number; size?: number }) {
   const strokeWidth = 6;
@@ -194,7 +272,7 @@ export default function Dashboard() {
         title: quickNoteText.trim(),
         content: '',
         priority: 'low',
-        category: 'egyéb',
+        category: 'egyéb', // Using 'egyéb' as it's the closest to "gyors" in available categories
         tags: [],
         project_id: null,
         due_date: null,
@@ -450,20 +528,13 @@ export default function Dashboard() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Projektek</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.projectsScroll}>
-            {projects.map(project => {
-              const noteCount = notesService.getNotes(project.id).then(notes => notes.length);
-              return (
-                <TouchableOpacity
-                  key={project.id}
-                  style={[styles.projectCard, { borderLeftColor: project.color, borderLeftWidth: 4 }]}
-                  onPress={() => router.push(`/(tabs)/notes?project=${project.id}`)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.projectName}>{project.name}</Text>
-                  <Text style={styles.projectCount}>0 jegyzet</Text>
-                </TouchableOpacity>
-              );
-            })}
+            {projects.map(project => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onPress={() => router.push(`/(tabs)/notes`)}
+              />
+            ))}
             <TouchableOpacity
               style={styles.projectCardAdd}
               onPress={() => router.push('/projects/manage')}

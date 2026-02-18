@@ -112,7 +112,7 @@ export default function ViewNote() {
         clearTimeout(autoSaveTimer.current);
       }
     };
-  }, [title, content, priority, category, projectId, tags, dueDate, note]);
+  }, [title, content, priority, category, projectId, tags, dueDate, newAttachments, note]);
 
   const loadNote = async () => {
     try {

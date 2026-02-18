@@ -92,7 +92,7 @@ export default function CreateNote() {
         clearTimeout(autoSaveTimer.current);
       }
     };
-  }, [title, content, priority, category, projectId, tags, dueDate]);
+  }, [title, content, priority, category, projectId, tags, dueDate, attachments]);
 
   const loadProjects = async () => {
     try {

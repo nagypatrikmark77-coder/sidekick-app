@@ -197,7 +197,7 @@ function HabitCard({
       }
     };
     loadHabitData();
-  }, [habit.id]);
+  }, [habit.id, habit.target_count]);
 
   return (
     <TouchableOpacity
