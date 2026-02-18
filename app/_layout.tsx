@@ -33,6 +33,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="notes" />
+        <Stack.Screen name="habits" />
         <Stack.Screen name="projects" />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
