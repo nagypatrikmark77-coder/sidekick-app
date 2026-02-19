@@ -9,19 +9,9 @@ import {
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { habitsStatsService } from '@/lib/habits-service';
+import { Colors } from '@/constants/theme';
 import { StreakBadge } from '@/components/StreakBadge';
 import { useAuth } from '@/contexts/AuthContext';
-
-const COLORS = {
-  background: '#0A0A0F',
-  card: '#1A1A2E',
-  border: '#2A2A4A',
-  primaryBlue: '#3B82F6',
-  textWhite: '#FFFFFF',
-  textMuted: '#9CA3AF',
-  success: '#22C55E',
-  warning: '#F59E0B',
-};
 
 export default function WeeklyReview() {
   const router = useRouter();
@@ -69,7 +59,7 @@ export default function WeeklyReview() {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-            <Feather name="arrow-left" size={24} color={COLORS.textWhite} />
+            <Feather name="arrow-left" size={24} color={Colors.textWhite} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Heti áttekintés</Text>
           <View style={styles.headerButton} />
@@ -86,7 +76,7 @@ export default function WeeklyReview() {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-            <Feather name="arrow-left" size={24} color={COLORS.textWhite} />
+            <Feather name="arrow-left" size={24} color={Colors.textWhite} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Heti áttekintés</Text>
           <View style={styles.headerButton} />
@@ -106,7 +96,7 @@ export default function WeeklyReview() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Feather name="arrow-left" size={24} color={COLORS.textWhite} />
+          <Feather name="arrow-left" size={24} color={Colors.textWhite} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Heti áttekintés</Text>
         <View style={styles.headerButton} />
@@ -139,7 +129,7 @@ export default function WeeklyReview() {
 
         <View style={styles.statCard}>
           <View style={styles.statHeader}>
-            <Feather name="flame" size={20} color={COLORS.warning} />
+            <Feather name="zap" size={20} color={Colors.warning} />
             <Text style={styles.statTitle}>Legjobb sorozat</Text>
           </View>
           <View style={styles.statValue}>
@@ -151,7 +141,7 @@ export default function WeeklyReview() {
         {stats.mostConsistent && (
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Feather name="trending-up" size={20} color={COLORS.success} />
+              <Feather name="trending-up" size={20} color={Colors.success} />
               <Text style={styles.statTitle}>Legkonzisztensebb szokás</Text>
             </View>
             <View style={styles.habitInfo}>
@@ -169,7 +159,7 @@ export default function WeeklyReview() {
         {stats.leastConsistent && stats.leastConsistent.rate < 100 && (
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Feather name="trending-down" size={20} color={COLORS.warning} />
+              <Feather name="trending-down" size={20} color={Colors.warning} />
               <Text style={styles.statTitle}>Fejlesztendő szokás</Text>
             </View>
             <View style={styles.habitInfo}>
@@ -191,7 +181,7 @@ export default function WeeklyReview() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -201,7 +191,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   headerButton: {
     padding: 8,
@@ -209,7 +199,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   content: {
     flex: 1,
@@ -223,7 +213,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontSize: 16,
   },
   emptyContainer: {
@@ -233,21 +223,21 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyText: {
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontSize: 16,
   },
   summaryCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   summaryTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -263,40 +253,40 @@ const styles = StyleSheet.create({
   summaryNumber: {
     fontSize: 32,
     fontWeight: '700',
-    color: COLORS.primaryBlue,
+    color: Colors.primary,
     marginBottom: 8,
   },
   summaryLabel: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     textAlign: 'center',
   },
   summaryDivider: {
     width: 1,
     height: 40,
-    backgroundColor: COLORS.border,
+    backgroundColor: Colors.border,
   },
   messageCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   messageText: {
     fontSize: 16,
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     textAlign: 'center',
     lineHeight: 24,
   },
   statCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   statHeader: {
     flexDirection: 'row',
@@ -307,7 +297,7 @@ const styles = StyleSheet.create({
   statTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   statValue: {
     flexDirection: 'row',
@@ -317,7 +307,7 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   habitInfo: {
     flexDirection: 'row',
@@ -333,11 +323,11 @@ const styles = StyleSheet.create({
   habitName: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     marginBottom: 4,
   },
   habitRate: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
   },
 });

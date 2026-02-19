@@ -37,7 +37,7 @@ function RootLayoutNav() {
         <Stack.Screen name="projects" />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </ThemeProvider>
   );
 }

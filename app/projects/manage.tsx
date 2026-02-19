@@ -11,32 +11,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import {
-  projectsService,
-  type Project,
-} from '@/lib/notes-service';
+import { projectsService, type Project } from '@/lib/notes-service';
 import { useAuth } from '@/contexts/AuthContext';
-
-const COLORS = {
-  background: '#0A0A0F',
-  card: '#1A1A2E',
-  border: '#2A2A4A',
-  primaryBlue: '#3B82F6',
-  textWhite: '#FFFFFF',
-  textMuted: '#9CA3AF',
-  error: '#EF4444',
-};
-
-const PROJECT_COLORS = [
-  '#3B82F6', // Blue
-  '#EF4444', // Red
-  '#22C55E', // Green
-  '#F59E0B', // Amber
-  '#A855F7', // Purple
-  '#EC4899', // Pink
-  '#06B6D4', // Cyan
-  '#F97316', // Orange
-];
+import { Colors, Spacing, Radius, FontSize, FontWeight, PresetColors, HEADER_PADDING_TOP } from '@/constants/theme';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 export default function ManageProjects() {
   const router = useRouter();
@@ -47,13 +26,11 @@ export default function ManageProjects() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectName, setProjectName] = useState('');
-  const [projectColor, setProjectColor] = useState(PROJECT_COLORS[0]);
+  const [projectColor, setProjectColor] = useState<string>(PresetColors[0]);
   const [projectCategory, setProjectCategory] = useState('');
 
   useEffect(() => {
-    if (user) {
-      loadProjects();
-    }
+    if (user) loadProjects();
   }, [user]);
 
   const loadProjects = async () => {
@@ -61,7 +38,6 @@ export default function ManageProjects() {
       const data = await projectsService.getProjects();
       setProjects(data);
 
-      // Load note counts
       const counts: Record<string, number> = {};
       for (const project of data) {
         counts[project.id] = await projectsService.getProjectNoteCount(project.id);
@@ -78,7 +54,7 @@ export default function ManageProjects() {
   const handleCreate = () => {
     setEditingProject(null);
     setProjectName('');
-    setProjectColor(PROJECT_COLORS[0]);
+    setProjectColor(PresetColors[0]);
     setProjectCategory('');
     setShowCreateModal(true);
   };
@@ -142,70 +118,69 @@ export default function ManageProjects() {
     );
   };
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+            <Feather name="arrow-left" size={24} color={Colors.textWhite} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Projektek kezelése</Text>
+          <View style={styles.headerButton} />
+        </View>
+        <LoadingScreen />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Feather name="arrow-left" size={24} color={COLORS.textWhite} />
+          <Feather name="arrow-left" size={24} color={Colors.textWhite} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Projektek kezelése</Text>
         <TouchableOpacity onPress={handleCreate} style={styles.headerButton}>
-          <Feather name="plus" size={24} color={COLORS.primaryBlue} />
+          <Feather name="plus" size={24} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Betöltés...</Text>
-        </View>
-      ) : (
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-          {projects.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Feather name="folder" size={64} color={COLORS.textMuted} />
-              <Text style={styles.emptyTitle}>Még nincsenek projekteid</Text>
-              <Text style={styles.emptyText}>
-                Hozz létre egy új projektet a + gombbal
-              </Text>
-            </View>
-          ) : (
-            projects.map(project => (
-              <View key={project.id} style={styles.projectCard}>
-                <View style={styles.projectHeader}>
-                  <View style={styles.projectInfo}>
-                    <View
-                      style={[styles.projectColorDot, { backgroundColor: project.color }]}
-                    />
-                    <View style={styles.projectText}>
-                      <Text style={styles.projectName}>{project.name}</Text>
-                      {project.category && (
-                        <Text style={styles.projectCategory}>{project.category}</Text>
-                      )}
-                    </View>
-                  </View>
-                  <View style={styles.projectActions}>
-                    <Text style={styles.noteCount}>
-                      {noteCounts[project.id] || 0} jegyzet
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleEdit(project)}
-                      style={styles.actionButton}
-                    >
-                      <Feather name="edit-2" size={18} color={COLORS.primaryBlue} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleDelete(project)}
-                      style={styles.actionButton}
-                    >
-                      <Feather name="trash-2" size={18} color={COLORS.error} />
-                    </TouchableOpacity>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        {projects.length === 0 ? (
+          <EmptyState
+            icon="folder"
+            title="Még nincsenek projekteid"
+            subtitle="Hozz létre egy új projektet a + gombbal"
+          />
+        ) : (
+          projects.map(project => (
+            <View key={project.id} style={styles.projectCard}>
+              <View style={styles.projectHeader}>
+                <View style={styles.projectInfo}>
+                  <View style={[styles.projectColorDot, { backgroundColor: project.color }]} />
+                  <View style={styles.projectText}>
+                    <Text style={styles.projectName}>{project.name}</Text>
+                    {project.category && (
+                      <Text style={styles.projectCategory}>{project.category}</Text>
+                    )}
                   </View>
                 </View>
+                <View style={styles.projectActions}>
+                  <Text style={styles.noteCount}>
+                    {noteCounts[project.id] || 0} jegyzet
+                  </Text>
+                  <TouchableOpacity onPress={() => handleEdit(project)} style={styles.actionButton}>
+                    <Feather name="edit-2" size={18} color={Colors.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(project)} style={styles.actionButton}>
+                    <Feather name="trash-2" size={18} color={Colors.error} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            ))
-          )}
-        </ScrollView>
-      )}
+            </View>
+          ))
+        )}
+      </ScrollView>
 
       <Modal
         visible={showCreateModal}
@@ -219,11 +194,8 @@ export default function ManageProjects() {
               <Text style={styles.modalTitle}>
                 {editingProject ? 'Projekt szerkesztése' : 'Új projekt'}
               </Text>
-              <TouchableOpacity
-                onPress={() => setShowCreateModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <Feather name="x" size={24} color={COLORS.textWhite} />
+              <TouchableOpacity onPress={() => setShowCreateModal(false)} style={styles.modalCloseButton}>
+                <Feather name="x" size={24} color={Colors.textWhite} />
               </TouchableOpacity>
             </View>
 
@@ -233,7 +205,7 @@ export default function ManageProjects() {
                 <TextInput
                   style={styles.input}
                   placeholder="Projekt neve"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={Colors.textMuted}
                   value={projectName}
                   onChangeText={setProjectName}
                 />
@@ -242,7 +214,7 @@ export default function ManageProjects() {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Szín</Text>
                 <View style={styles.colorPicker}>
-                  {PROJECT_COLORS.map(color => (
+                  {PresetColors.map(color => (
                     <TouchableOpacity
                       key={color}
                       style={[
@@ -253,7 +225,7 @@ export default function ManageProjects() {
                       onPress={() => setProjectColor(color)}
                     >
                       {projectColor === color && (
-                        <Feather name="check" size={16} color={COLORS.textWhite} />
+                        <Feather name="check" size={16} color={Colors.textWhite} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -265,7 +237,7 @@ export default function ManageProjects() {
                 <TextInput
                   style={styles.input}
                   placeholder="Kategória"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={Colors.textMuted}
                   value={projectCategory}
                   onChangeText={setProjectCategory}
                 />
@@ -273,10 +245,7 @@ export default function ManageProjects() {
             </View>
 
             <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowCreateModal(false)}
-              >
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setShowCreateModal(false)}>
                 <Text style={styles.cancelButtonText}>Mégse</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -293,66 +262,39 @@ export default function ManageProjects() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: HEADER_PADDING_TOP,
+    paddingBottom: Spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   headerButton: {
-    padding: 8,
+    padding: Spacing.sm,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
   },
   content: {
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: COLORS.textMuted,
-    fontSize: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    textAlign: 'center',
+    padding: Spacing.xl,
   },
   projectCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   projectHeader: {
     flexDirection: 'row',
@@ -363,7 +305,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: Spacing.md,
   },
   projectColorDot: {
     width: 24,
@@ -374,84 +316,84 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   projectName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
     marginBottom: 4,
   },
   projectCategory: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
   projectActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Spacing.md,
   },
   noteCount: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
   actionButton: {
-    padding: 8,
+    padding: Spacing.sm,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: Colors.modalOverlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: Spacing.xl,
+    borderTopRightRadius: Spacing.xl,
+    paddingTop: Spacing.xl,
     maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xl,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
   },
   modalCloseButton: {
-    padding: 8,
+    padding: Spacing.sm,
   },
   modalBody: {
-    padding: 20,
-    gap: 24,
+    padding: Spacing.xl,
+    gap: Spacing.xxl,
   },
   inputGroup: {
-    gap: 8,
+    gap: Spacing.sm,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textMuted,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: COLORS.card,
-    borderRadius: 8,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: COLORS.textWhite,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    fontSize: FontSize.lg,
+    color: Colors.textWhite,
   },
   colorPicker: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: Spacing.md,
   },
   colorOption: {
     width: 44,
@@ -463,37 +405,37 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorOptionActive: {
-    borderColor: COLORS.textWhite,
+    borderColor: Colors.textWhite,
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 20,
+    gap: Spacing.md,
+    padding: Spacing.xl,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: Colors.border,
   },
   cancelButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: COLORS.card,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.card,
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.textWhite,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textWhite,
   },
   saveButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: COLORS.primaryBlue,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
   },
   saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.textWhite,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textWhite,
   },
 });

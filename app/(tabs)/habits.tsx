@@ -17,27 +17,19 @@ import {
   habitLogsService,
   type Habit,
 } from '@/lib/habits-service';
+import { CATEGORY_LABELS } from '@/types/database';
 import { StreakBadge } from '@/components/StreakBadge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { useAuth } from '@/contexts/AuthContext';
-
-const COLORS = {
-  background: '#0A0A0F',
-  card: '#1A1A2E',
-  border: '#2A2A4A',
-  primaryBlue: '#3B82F6',
-  textWhite: '#FFFFFF',
-  textMuted: '#9CA3AF',
-  success: '#22C55E',
-  warning: '#F59E0B',
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  munka: 'Munka',
-  egészség: 'Egészség',
-  tanulás: 'Tanulás',
-  sport: 'Sport',
-  egyéb: 'Egyéb',
-};
+import {
+  Colors,
+  Spacing,
+  Radius,
+  FontSize,
+  FontWeight,
+  HEADER_PADDING_TOP,
+} from '@/constants/theme';
 
 function CircularProgress({ progress, size = 80 }: { progress: number; size?: number }) {
   const strokeWidth = 6;
@@ -52,7 +44,7 @@ function CircularProgress({ progress, size = 80 }: { progress: number; size?: nu
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={COLORS.border}
+          stroke={Colors.border}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -60,7 +52,7 @@ function CircularProgress({ progress, size = 80 }: { progress: number; size?: nu
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={COLORS.success}
+          stroke={Colors.success}
           strokeWidth={strokeWidth}
           fill="none"
           strokeDasharray={circumference}
@@ -97,7 +89,7 @@ export default function Habits() {
       ]);
 
       const todays = await habitsStatsService.getTodaysHabits();
-      const archived = allHabits.filter(h => h.archived);
+      const archived = allHabits.filter(h => h.is_archived);
 
       setHabits(allHabits);
       setTodaysHabits(todays);
@@ -227,9 +219,9 @@ function HabitCard({
           activeOpacity={0.7}
         >
           {completed ? (
-            <Feather name="check" size={20} color={COLORS.textWhite} />
+            <Feather name="check" size={20} color={Colors.textWhite} />
           ) : (
-            <Feather name="circle" size={20} color={COLORS.textMuted} />
+            <Feather name="circle" size={20} color={Colors.textMuted} />
           )}
         </TouchableOpacity>
       </View>
@@ -263,43 +255,12 @@ function HabitCard({
   );
 }
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Feather name="target" size={64} color={COLORS.textMuted} />
-      <Text style={styles.emptyTitle}>Még nincsenek szokásaid</Text>
-      <Text style={styles.emptyText}>
-        Hozz létre egy új szokást a + gombbal
-      </Text>
-      <TouchableOpacity
-        style={styles.emptyButton}
-        onPress={() => router.push('/habits/create')}
-      >
-        <Text style={styles.emptyButtonText}>Első szokás létrehozása</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
   const progressPercent = dailyProgress.total > 0
     ? (dailyProgress.completed / dailyProgress.total) * 100
     : 0;
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Szokáskövetés</Text>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => router.push('/habits/create')}
-          >
-            <Feather name="plus" size={24} color={COLORS.textWhite} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Betöltés...</Text>
-        </View>
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return (
@@ -310,7 +271,7 @@ function HabitCard({
           style={styles.iconButton}
           onPress={() => router.push('/habits/create')}
         >
-          <Feather name="plus" size={24} color={COLORS.textWhite} />
+          <Feather name="plus" size={24} color={Colors.textWhite} />
         </TouchableOpacity>
       </View>
 
@@ -321,7 +282,7 @@ function HabitCard({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.primaryBlue}
+            tintColor={Colors.primary}
           />
         }
       >
@@ -346,7 +307,13 @@ function HabitCard({
         </View>
 
         {habits.length === 0 ? (
-          renderEmpty()
+          <EmptyState
+            icon="target"
+            title="Még nincsenek szokásaid"
+            subtitle="Hozz létre egy új szokást a + gombbal"
+            actionLabel="Első szokás létrehozása"
+            onAction={() => router.push('/habits/create')}
+          />
         ) : (
           <>
             {todaysHabits.length > 0 && (
@@ -388,26 +355,26 @@ function HabitCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: HEADER_PADDING_TOP,
+    paddingBottom: Spacing.lg,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.hero,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
   },
   iconButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.card,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -415,181 +382,142 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
+    padding: Spacing.xl,
     paddingBottom: 100,
   },
   dateContainer: {
-    marginBottom: 24,
+    marginBottom: Spacing.xxl,
   },
   dateText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.textMuted,
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textMuted,
     textTransform: 'capitalize',
   },
   progressSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    gap: 20,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    marginBottom: Spacing.xxl,
+    gap: Spacing.xl,
   },
   progressText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
   },
   progressInfo: {
     flex: 1,
-    gap: 8,
+    gap: Spacing.sm,
   },
   progressLabel: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    fontWeight: '600',
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    fontWeight: FontWeight.semibold,
   },
   progressCount: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.xxxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
   },
   streakContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   streakText: {
-    fontSize: 14,
-    color: COLORS.textMuted,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginTop: 24,
-    marginBottom: 12,
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
+    marginTop: Spacing.xxl,
+    marginBottom: Spacing.md,
   },
   habitCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   habitHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   habitInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: Spacing.md,
   },
   habitIcon: {
-    fontSize: 32,
+    fontSize: FontSize.hero,
   },
   habitText: {
     flex: 1,
   },
   habitName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginBottom: 4,
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
+    marginBottom: Spacing.xs,
   },
   habitDescription: {
-    fontSize: 14,
-    color: COLORS.textMuted,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
   },
   checkButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.border,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkButtonCompleted: {
-    backgroundColor: COLORS.success,
+    backgroundColor: Colors.success,
   },
   habitFooter: {
-    gap: 8,
+    gap: Spacing.sm,
   },
   habitMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   categoryBadge: {
-    backgroundColor: COLORS.border,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.sm,
   },
   categoryText: {
-    fontSize: 12,
-    color: COLORS.textWhite,
-    fontWeight: '600',
+    fontSize: FontSize.sm,
+    color: Colors.textWhite,
+    fontWeight: FontWeight.semibold,
   },
   progressBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   progressBar: {
     flex: 1,
     height: 6,
-    backgroundColor: COLORS.border,
+    backgroundColor: Colors.border,
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     borderRadius: 3,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: COLORS.primaryBlue,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyButtonText: {
-    color: COLORS.textWhite,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: COLORS.textMuted,
-    fontSize: 16,
   },
 });

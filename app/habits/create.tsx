@@ -16,26 +16,14 @@ import {
   type HabitFrequency,
   type HabitCategory,
 } from '@/lib/habits-service';
+import { CATEGORY_LABELS } from '@/types/database';
+import { Colors, PresetColors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-
-const COLORS = {
-  background: '#0A0A0F',
-  card: '#1A1A2E',
-  border: '#2A2A4A',
-  primaryBlue: '#3B82F6',
-  textWhite: '#FFFFFF',
-  textMuted: '#9CA3AF',
-};
 
 const EMOJIS = [
   '💪', '🏃', '📚', '💧', '🧘', '🍎', '📝', '🎯',
   '⚡', '🌱', '🎨', '🎵', '📖', '🏋️', '🚶', '😴',
   '☕', '🧠', '💤', '🌟',
-];
-
-const COLORS_PRESET = [
-  '#3B82F6', '#EF4444', '#22C55E', '#F59E0B',
-  '#A855F7', '#EC4899', '#06B6D4', '#F97316',
 ];
 
 const FREQUENCIES: { value: HabitFrequency; label: string }[] = [
@@ -69,7 +57,7 @@ export default function CreateHabit() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState(EMOJIS[0]);
-  const [color, setColor] = useState(COLORS_PRESET[0]);
+  const [color, setColor] = useState<string>(PresetColors[0]);
   const [frequency, setFrequency] = useState<HabitFrequency>('daily');
   const [customDays, setCustomDays] = useState<number[]>([]);
   const [category, setCategory] = useState<HabitCategory>('egyéb');
@@ -134,7 +122,7 @@ export default function CreateHabit() {
         custom_days: frequency === 'custom' ? customDays : null,
         category,
         target_count: targetCount,
-        archived: false,
+        is_archived: false,
       };
 
       if (editing && id) {
@@ -156,7 +144,7 @@ export default function CreateHabit() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Feather name="x" size={24} color={COLORS.textWhite} />
+          <Feather name="x" size={24} color={Colors.textWhite} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {editing ? 'Szokás szerkesztése' : 'Új szokás'}
@@ -176,7 +164,7 @@ export default function CreateHabit() {
           <TextInput
             style={styles.input}
             placeholder="Szokás neve"
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={Colors.textMuted}
             value={name}
             onChangeText={setName}
           />
@@ -187,7 +175,7 @@ export default function CreateHabit() {
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Opcionális leírás"
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={Colors.textMuted}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -219,7 +207,7 @@ export default function CreateHabit() {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Szín</Text>
           <View style={styles.colorPicker}>
-            {COLORS_PRESET.map(colorOption => (
+            {PresetColors.map(colorOption => (
               <TouchableOpacity
                 key={colorOption}
                 style={[
@@ -230,7 +218,7 @@ export default function CreateHabit() {
                 onPress={() => setColor(colorOption)}
               >
                 {color === colorOption && (
-                  <Feather name="check" size={16} color={COLORS.textWhite} />
+                  <Feather name="check" size={16} color={Colors.textWhite} />
                 )}
               </TouchableOpacity>
             ))}
@@ -321,14 +309,14 @@ export default function CreateHabit() {
               style={styles.targetButton}
               onPress={() => setTargetCount(Math.max(1, targetCount - 1))}
             >
-              <Feather name="minus" size={20} color={COLORS.textWhite} />
+              <Feather name="minus" size={20} color={Colors.textWhite} />
             </TouchableOpacity>
             <Text style={styles.targetCount}>{targetCount}</Text>
             <TouchableOpacity
               style={styles.targetButton}
               onPress={() => setTargetCount(targetCount + 1)}
             >
-              <Feather name="plus" size={20} color={COLORS.textWhite} />
+              <Feather name="plus" size={20} color={Colors.textWhite} />
             </TouchableOpacity>
           </View>
         </View>
@@ -340,7 +328,7 @@ export default function CreateHabit() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -350,7 +338,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   headerButton: {
     padding: 8,
@@ -358,16 +346,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   saveButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: COLORS.primaryBlue,
+    backgroundColor: Colors.primary,
   },
   saveButtonText: {
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -383,20 +371,20 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 16,
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   textArea: {
     minHeight: 80,
@@ -410,14 +398,14 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconOptionActive: {
-    borderColor: COLORS.primaryBlue,
+    borderColor: Colors.primary,
     borderWidth: 3,
   },
   iconText: {
@@ -438,7 +426,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorOptionActive: {
-    borderColor: COLORS.textWhite,
+    borderColor: Colors.textWhite,
   },
   frequencyContainer: {
     flexDirection: 'row',
@@ -448,22 +436,22 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     alignItems: 'center',
   },
   frequencyOptionActive: {
-    backgroundColor: COLORS.primaryBlue,
-    borderColor: COLORS.primaryBlue,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   frequencyText: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontWeight: '600',
   },
   frequencyTextActive: {
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   daysContainer: {
     flexDirection: 'row',
@@ -473,22 +461,22 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     alignItems: 'center',
   },
   dayOptionActive: {
-    backgroundColor: COLORS.primaryBlue,
-    borderColor: COLORS.primaryBlue,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   dayText: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontWeight: '600',
   },
   dayTextActive: {
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   categoryContainer: {
     flexDirection: 'row',
@@ -499,21 +487,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   categoryOptionActive: {
-    backgroundColor: COLORS.primaryBlue,
-    borderColor: COLORS.primaryBlue,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   categoryText: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontWeight: '600',
   },
   categoryTextActive: {
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   targetContainer: {
     flexDirection: 'row',
@@ -524,16 +512,16 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   targetCount: {
     fontSize: 24,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     minWidth: 40,
     textAlign: 'center',
   },

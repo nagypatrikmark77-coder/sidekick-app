@@ -13,18 +13,18 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { notesService, projectsService, type Note, type Project } from '@/lib/notes-service';
 import { useAuth } from '@/contexts/AuthContext';
-
-const COLORS = {
-  background: '#0A0A0F',
-  card: '#1A1A2E',
-  border: '#2A2A4A',
-  primaryBlue: '#3B82F6',
-  textWhite: '#FFFFFF',
-  textMuted: '#9CA3AF',
-  priorityHigh: '#EF4444',
-  priorityMedium: '#F59E0B',
-  priorityLow: '#22C55E',
-};
+import {
+  Colors,
+  PriorityColors,
+  Spacing,
+  Radius,
+  FontSize,
+  FontWeight,
+  HEADER_PADDING_TOP,
+  CardShadow,
+} from '@/constants/theme';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 export default function Notes() {
   const router = useRouter();
@@ -97,13 +97,13 @@ export default function Notes() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return COLORS.priorityHigh;
+        return PriorityColors.high;
       case 'medium':
-        return COLORS.priorityMedium;
+        return PriorityColors.medium;
       case 'low':
-        return COLORS.priorityLow;
+        return PriorityColors.low;
       default:
-        return COLORS.textMuted;
+        return Colors.textMuted;
     }
   };
 
@@ -142,7 +142,7 @@ export default function Notes() {
       >
         {item.pinned && (
           <View style={styles.pinnedBadge}>
-            <Feather name="pin" size={12} color={COLORS.primaryBlue} />
+            <Feather name="bookmark" size={12} color={Colors.primary} />
           </View>
         )}
         <View style={styles.noteHeader}>
@@ -165,7 +165,7 @@ export default function Notes() {
             )}
             {dueDate && (
               <View style={styles.dateBadge}>
-                <Feather name="calendar" size={12} color={COLORS.textMuted} />
+                <Feather name="calendar" size={12} color={Colors.textMuted} />
                 <Text style={styles.dateBadgeText}>{dueDate}</Text>
               </View>
             )}
@@ -188,27 +188,11 @@ export default function Notes() {
           onPress={() => handleDelete(item.id)}
           activeOpacity={0.7}
         >
-          <Feather name="trash-2" size={18} color={COLORS.priorityHigh} />
+          <Feather name="trash-2" size={18} color={PriorityColors.high} />
         </TouchableOpacity>
       </TouchableOpacity>
     );
   };
-
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Feather name="file-text" size={64} color={COLORS.textMuted} />
-      <Text style={styles.emptyTitle}>Még nincsenek jegyzeteid</Text>
-      <Text style={styles.emptyText}>
-        Hozz létre egy új jegyzetet a + gombbal
-      </Text>
-      <TouchableOpacity
-        style={styles.emptyButton}
-        onPress={() => router.push('/notes/create')}
-      >
-        <Text style={styles.emptyButtonText}>Első jegyzet létrehozása</Text>
-      </TouchableOpacity>
-    </View>
-  );
 
   return (
     <View style={styles.container}>
@@ -219,13 +203,13 @@ export default function Notes() {
             style={styles.iconButton}
             onPress={() => router.push('/projects/manage')}
           >
-            <Feather name="filter" size={20} color={COLORS.textWhite} />
+            <Feather name="filter" size={20} color={Colors.textWhite} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push('/notes/create')}
           >
-            <Feather name="plus" size={24} color={COLORS.textWhite} />
+            <Feather name="plus" size={24} color={Colors.textWhite} />
           </TouchableOpacity>
         </View>
       </View>
@@ -293,21 +277,27 @@ export default function Notes() {
       </ScrollView>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Betöltés...</Text>
-        </View>
+        <LoadingScreen />
       ) : (
         <FlatList
           data={notes}
           renderItem={renderNote}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={renderEmpty}
+          ListEmptyComponent={
+            <EmptyState
+              icon="file-text"
+              title="Még nincsenek jegyzeteid"
+              subtitle="Hozz létre egy új jegyzetet a + gombbal"
+              actionLabel="Első jegyzet létrehozása"
+              onAction={() => router.push('/notes/create')}
+            />
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.primaryBlue}
+              tintColor={Colors.primary}
             />
           }
         />
@@ -318,7 +308,7 @@ export default function Notes() {
         onPress={() => router.push('/notes/create')}
         activeOpacity={0.8}
       >
-        <Feather name="plus" size={28} color={COLORS.textWhite} />
+        <Feather name="plus" size={28} color={Colors.textWhite} />
       </TouchableOpacity>
     </View>
   );
@@ -327,63 +317,63 @@ export default function Notes() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: HEADER_PADDING_TOP,
+    paddingBottom: Spacing.lg,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.hero,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: Spacing.md,
   },
   iconButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.card,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
   filterContainer: {
     maxHeight: 50,
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   filterContent: {
-    paddingHorizontal: 20,
-    gap: 8,
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.sm,
   },
   filterTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: COLORS.card,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 6,
+    borderColor: Colors.border,
+    gap: Radius.sm,
   },
   filterTabActive: {
-    backgroundColor: COLORS.primaryBlue,
-    borderColor: COLORS.primaryBlue,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   filterTabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textMuted,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textMuted,
   },
   filterTabTextActive: {
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   projectDot: {
     width: 8,
@@ -391,39 +381,39 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   listContent: {
-    padding: 20,
+    padding: Spacing.xl,
     paddingBottom: 100,
   },
   noteCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     position: 'relative',
   },
   noteCardPinned: {
-    borderColor: COLORS.primaryBlue,
+    borderColor: Colors.primary,
     borderWidth: 2,
   },
   pinnedBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: Spacing.md,
+    right: Spacing.md,
   },
   noteHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   noteTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
     flex: 1,
-    marginRight: 8,
+    marginRight: Spacing.sm,
   },
   priorityDot: {
     width: 12,
@@ -431,123 +421,80 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   notePreview: {
-    fontSize: 14,
-    color: COLORS.textMuted,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   noteFooter: {
-    gap: 8,
+    gap: Spacing.sm,
   },
   noteMeta: {
     flexDirection: 'row',
-    gap: 8,
+    gap: Spacing.sm,
     flexWrap: 'wrap',
   },
   projectBadge: {
-    backgroundColor: COLORS.border,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.sm,
   },
   projectBadgeText: {
-    fontSize: 12,
-    color: COLORS.textWhite,
-    fontWeight: '600',
+    fontSize: FontSize.sm,
+    color: Colors.textWhite,
+    fontWeight: FontWeight.semibold,
   },
   dateBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: COLORS.border,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    gap: Spacing.xs,
+    backgroundColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.sm,
   },
   dateBadgeText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
   tagsContainer: {
     flexDirection: 'row',
-    gap: 6,
+    gap: Radius.sm,
     flexWrap: 'wrap',
     alignItems: 'center',
   },
   tagChip: {
-    backgroundColor: COLORS.border,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.sm,
   },
   tagText: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    fontWeight: '500',
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    fontWeight: FontWeight.medium,
   },
   tagMore: {
-    fontSize: 11,
-    color: COLORS.textMuted,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
   },
   deleteButton: {
     position: 'absolute',
-    right: 12,
-    bottom: 12,
-    padding: 8,
+    right: Spacing.md,
+    bottom: Spacing.md,
+    padding: Spacing.sm,
   },
   fab: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
+    right: Spacing.xl,
+    bottom: Spacing.xl,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primaryBlue,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: COLORS.primaryBlue,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyButtonText: {
-    color: COLORS.textWhite,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: COLORS.textMuted,
-    fontSize: 16,
+    ...CardShadow,
   },
 });

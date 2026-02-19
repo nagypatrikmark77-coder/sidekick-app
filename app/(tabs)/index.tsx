@@ -17,25 +17,17 @@ import { supabase } from '@/lib/supabase';
 import { habitsService, habitsStatsService, habitLogsService, type Habit } from '@/lib/habits-service';
 import { notesService, projectsService, type Note, type Project } from '@/lib/notes-service';
 import { StreakBadge } from '@/components/StreakBadge';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { useAuth } from '@/contexts/AuthContext';
-
-const COLORS = {
-  background: '#0A0A0F',
-  card: '#1A1A2E',
-  border: '#2A2A4A',
-  primaryBlue: '#3B82F6',
-  textWhite: '#FFFFFF',
-  textMuted: '#9CA3AF',
-  success: '#22C55E',
-  warning: '#F59E0B',
-  error: '#EF4444',
-};
-
-const PRIORITY_COLORS = {
-  high: COLORS.error,
-  medium: COLORS.warning,
-  low: COLORS.success,
-};
+import {
+  Colors,
+  PriorityColors,
+  Spacing,
+  Radius,
+  FontSize,
+  FontWeight,
+  HEADER_PADDING_TOP,
+} from '@/constants/theme';
 
 function QuickHabitItem({
   habit,
@@ -67,7 +59,7 @@ function QuickHabitItem({
     >
       <View style={[styles.quickHabitCheck, completed && styles.quickHabitCheckCompleted]}>
         {completed && (
-          <Feather name="check" size={14} color={COLORS.textWhite} />
+          <Feather name="check" size={14} color={Colors.textWhite} />
         )}
       </View>
       <Text style={styles.quickHabitText} numberOfLines={1}>
@@ -128,7 +120,7 @@ function CircularProgress({ progress, size = 80 }: { progress: number; size?: nu
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={COLORS.border}
+          stroke={Colors.border}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -136,7 +128,7 @@ function CircularProgress({ progress, size = 80 }: { progress: number; size?: nu
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={COLORS.success}
+          stroke={Colors.success}
           strokeWidth={strokeWidth}
           fill="none"
           strokeDasharray={circumference}
@@ -368,14 +360,7 @@ export default function Dashboard() {
     : 0;
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primaryBlue} />
-          <Text style={styles.loadingText}>Betöltés...</Text>
-        </View>
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return (
@@ -387,7 +372,7 @@ export default function Dashboard() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.primaryBlue}
+            tintColor={Colors.primary}
           />
         }
       >
@@ -412,7 +397,7 @@ export default function Dashboard() {
         >
           <View style={styles.habitsHeader}>
             <Text style={styles.cardTitle}>Mai szokások</Text>
-            <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
+            <Feather name="chevron-right" size={20} color={Colors.textMuted} />
           </View>
           <View style={styles.habitsContent}>
             <CircularProgress progress={progressPercent} size={100} />
@@ -447,7 +432,7 @@ export default function Dashboard() {
           <TextInput
             style={styles.quickNoteInput}
             placeholder="Gyors jegyzet..."
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={Colors.textMuted}
             value={quickNoteText}
             onChangeText={setQuickNoteText}
             onSubmitEditing={handleQuickNote}
@@ -461,9 +446,9 @@ export default function Dashboard() {
               style={styles.quickNoteButton}
             >
               {creatingNote ? (
-                <ActivityIndicator size="small" color={COLORS.primaryBlue} />
+                <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
-                <Feather name="plus" size={20} color={COLORS.primaryBlue} />
+                <Feather name="plus" size={20} color={Colors.primary} />
               )}
             </TouchableOpacity>
           )}
@@ -480,7 +465,7 @@ export default function Dashboard() {
               <Text style={styles.reviewTitle}>Heti áttekintés elérhető!</Text>
               <Text style={styles.reviewText}>Nézd meg a heti teljesítményed</Text>
             </View>
-            <Feather name="arrow-right" size={20} color={COLORS.primaryBlue} />
+            <Feather name="arrow-right" size={20} color={Colors.primary} />
           </TouchableOpacity>
         )}
 
@@ -499,7 +484,7 @@ export default function Dashboard() {
                 onPress={() => router.push(`/notes/${note.id}`)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[note.priority] }]} />
+                <View style={[styles.priorityDot, { backgroundColor: PriorityColors[note.priority] }]} />
                 <View style={styles.noteItemContent}>
                   <Text style={styles.noteItemTitle} numberOfLines={1}>
                     {note.title || 'Cím nélküli jegyzet'}
@@ -518,7 +503,7 @@ export default function Dashboard() {
                     )}
                   </View>
                 </View>
-                <Feather name="chevron-right" size={18} color={COLORS.textMuted} />
+                <Feather name="chevron-right" size={18} color={Colors.textMuted} />
               </TouchableOpacity>
             ))
           )}
@@ -540,7 +525,7 @@ export default function Dashboard() {
               onPress={() => router.push('/projects/manage')}
               activeOpacity={0.7}
             >
-              <Feather name="plus" size={24} color={COLORS.primaryBlue} />
+              <Feather name="plus" size={24} color={Colors.primary} />
               <Text style={styles.projectCardAddText}>Új projekt</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -584,155 +569,145 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   content: {
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
+    padding: Spacing.xl,
     paddingBottom: 100,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: COLORS.textMuted,
-    fontSize: 16,
-    marginTop: 12,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
-    paddingTop: 60,
+    marginBottom: Spacing.xxl,
+    paddingTop: HEADER_PADDING_TOP,
   },
   headerText: {
     flex: 1,
   },
   greeting: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginBottom: 4,
+    fontSize: FontSize.title,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
+    marginBottom: Spacing.xs,
   },
   dateText: {
-    fontSize: 16,
-    color: COLORS.textMuted,
+    fontSize: FontSize.lg,
+    color: Colors.textMuted,
     textTransform: 'capitalize',
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
   },
   habitsCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    marginBottom: Spacing.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   habitsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
   },
   habitsContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
-    marginBottom: 16,
+    gap: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   habitsInfo: {
     flex: 1,
-    gap: 8,
+    gap: Spacing.sm,
   },
   habitsCount: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.xxxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
   },
   streakContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   streakText: {
-    fontSize: 14,
-    color: COLORS.textMuted,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
   },
   progressText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
   },
   quickHabits: {
-    gap: 8,
-    paddingTop: 16,
+    gap: Spacing.sm,
+    paddingTop: Spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: Colors.border,
   },
   quickHabitItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Spacing.md,
   },
   quickHabitCheck: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   quickHabitCheckCompleted: {
-    backgroundColor: COLORS.success,
-    borderColor: COLORS.success,
+    backgroundColor: Colors.success,
+    borderColor: Colors.success,
   },
   quickHabitText: {
     flex: 1,
-    fontSize: 14,
-    color: COLORS.textWhite,
+    fontSize: FontSize.md,
+    color: Colors.textWhite,
   },
   quickNoteCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Spacing.md,
   },
   quickNoteInput: {
     flex: 1,
-    fontSize: 16,
-    color: COLORS.textWhite,
+    fontSize: FontSize.lg,
+    color: Colors.textWhite,
   },
   quickNoteButton: {
-    padding: 8,
+    padding: Spacing.sm,
   },
   reviewCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
     borderWidth: 1,
-    borderColor: COLORS.primaryBlue,
+    borderColor: Colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -741,42 +716,42 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reviewTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginBottom: 4,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
+    marginBottom: Spacing.xs,
   },
   reviewText: {
-    fontSize: 14,
-    color: COLORS.textMuted,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: Spacing.xxl,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginBottom: 12,
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
+    marginBottom: Spacing.md,
   },
   emptySection: {
-    padding: 20,
+    padding: Spacing.xl,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 14,
-    color: COLORS.textMuted,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
   },
   noteItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 12,
+    borderColor: Colors.border,
+    gap: Spacing.md,
   },
   priorityDot: {
     width: 12,
@@ -787,91 +762,91 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   noteItemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.textWhite,
-    marginBottom: 4,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textWhite,
+    marginBottom: Spacing.xs,
   },
   noteItemMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   noteItemDate: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
   noteItemSeparator: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
   noteItemProject: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
   projectsScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+    marginHorizontal: -Spacing.xl,
+    paddingHorizontal: Spacing.xl,
   },
   projectCard: {
     width: 140,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 12,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginRight: Spacing.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   projectName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginBottom: 8,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
+    marginBottom: Spacing.sm,
   },
   projectCount: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
   projectCardAdd: {
     width: 140,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 12,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginRight: Spacing.md,
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   projectCardAddText: {
-    fontSize: 12,
-    color: COLORS.primaryBlue,
-    fontWeight: '600',
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+    fontWeight: FontWeight.semibold,
   },
   recentNoteCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   recentNoteTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textWhite,
-    marginBottom: 8,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.textWhite,
+    marginBottom: Spacing.sm,
   },
   recentNotePreview: {
-    fontSize: 14,
-    color: COLORS.textMuted,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
     lineHeight: 20,
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   recentNoteTime: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
 });

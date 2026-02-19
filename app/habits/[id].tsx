@@ -15,33 +15,10 @@ import {
   habitLogsService,
   type Habit,
 } from '@/lib/habits-service';
+import { CATEGORY_LABELS, FREQUENCY_LABELS } from '@/types/database';
+import { Colors } from '@/constants/theme';
 import { StreakBadge } from '@/components/StreakBadge';
 import { useAuth } from '@/contexts/AuthContext';
-
-const COLORS = {
-  background: '#0A0A0F',
-  card: '#1A1A2E',
-  border: '#2A2A4A',
-  primaryBlue: '#3B82F6',
-  textWhite: '#FFFFFF',
-  textMuted: '#9CA3AF',
-  success: '#22C55E',
-  warning: '#F59E0B',
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  munka: 'Munka',
-  egészség: 'Egészség',
-  tanulás: 'Tanulás',
-  sport: 'Sport',
-  egyéb: 'Egyéb',
-};
-
-const FREQUENCY_LABELS: Record<string, string> = {
-  daily: 'Naponta',
-  weekly: 'Hetente',
-  custom: 'Egyéni',
-};
 
 function CalendarHeatmap({ habitId, habit }: { habitId: string; habit: Habit }) {
   const [logs, setLogs] = useState<Record<string, number>>({});
@@ -102,7 +79,7 @@ function CalendarHeatmap({ habitId, habit }: { habitId: string; habit: Habit }) 
               key={index}
               style={[
                 styles.heatmapDay,
-                isCompleted && { backgroundColor: COLORS.success },
+                isCompleted && { backgroundColor: Colors.success },
               ]}
             />
           );
@@ -187,7 +164,7 @@ export default function HabitDetail() {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-            <Feather name="arrow-left" size={24} color={COLORS.textWhite} />
+            <Feather name="arrow-left" size={24} color={Colors.textWhite} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Betöltés...</Text>
           <View style={styles.headerButton} />
@@ -200,7 +177,7 @@ export default function HabitDetail() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Feather name="arrow-left" size={24} color={COLORS.textWhite} />
+          <Feather name="arrow-left" size={24} color={Colors.textWhite} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Szokás részletei</Text>
         <View style={styles.headerActions}>
@@ -208,10 +185,10 @@ export default function HabitDetail() {
             onPress={() => router.push(`/habits/create?id=${id}`)}
             style={styles.headerButton}
           >
-            <Feather name="edit-2" size={20} color={COLORS.primaryBlue} />
+            <Feather name="edit-2" size={20} color={Colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
-            <Feather name="trash-2" size={20} color={COLORS.warning} />
+            <Feather name="trash-2" size={20} color={Colors.warning} />
           </TouchableOpacity>
         </View>
       </View>
@@ -274,7 +251,7 @@ export default function HabitDetail() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -284,7 +261,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   headerButton: {
     padding: 8,
@@ -292,7 +269,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   headerActions: {
     flexDirection: 'row',
@@ -307,7 +284,7 @@ const styles = StyleSheet.create({
   habitHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -322,12 +299,12 @@ const styles = StyleSheet.create({
   habitName: {
     fontSize: 24,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     marginBottom: 8,
   },
   habitDescription: {
     fontSize: 16,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     marginBottom: 12,
     lineHeight: 22,
   },
@@ -337,19 +314,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   categoryBadge: {
-    backgroundColor: COLORS.border,
+    backgroundColor: Colors.border,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,
   },
   categoryText: {
     fontSize: 12,
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     fontWeight: '600',
   },
   frequencyText: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontWeight: '600',
   },
   statsGrid: {
@@ -361,15 +338,15 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   statLabel: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontWeight: '600',
     marginBottom: 8,
   },
@@ -381,15 +358,15 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   statPercentage: {
     fontSize: 32,
     fontWeight: '700',
-    color: COLORS.success,
+    color: Colors.success,
   },
   heatmapContainer: {
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -397,7 +374,7 @@ const styles = StyleSheet.create({
   heatmapTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     marginBottom: 16,
   },
   heatmapGrid: {
@@ -409,6 +386,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 4,
-    backgroundColor: COLORS.border,
+    backgroundColor: Colors.border,
   },
 });

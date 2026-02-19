@@ -1,42 +1,34 @@
 import { StyleSheet, Text, View } from 'react-native';
-
-const COLORS = {
-  textWhite: '#FFFFFF',
-  textMuted: '#9CA3AF',
-  warning: '#F59E0B',
-};
+import { Colors } from '@/constants/theme';
 
 interface StreakBadgeProps {
   streak: number;
   size?: 'small' | 'medium' | 'large';
 }
 
+const sizeStyles = {
+  small: { icon: 12, text: 10, container: 20 },
+  medium: { icon: 16, text: 12, container: 24 },
+  large: { icon: 20, text: 14, container: 28 },
+};
+
 export function StreakBadge({ streak, size = 'medium' }: StreakBadgeProps) {
   const isActive = streak > 0;
-
-  const sizeStyles = {
-    small: { icon: 12, text: 10, container: 20 },
-    medium: { icon: 16, text: 12, container: 24 },
-    large: { icon: 20, text: 14, container: 28 },
-  };
-
-  const styles = sizeStyles[size];
+  const s = sizeStyles[size];
 
   return (
-    <View style={[stylesContainer.badge, { height: styles.container, minWidth: styles.container }]}>
-      <Text style={[stylesContainer.icon, { fontSize: styles.icon }]}>
-        {isActive ? '🔥' : '⚪'}
+    <View style={[styles.badge, { height: s.container, minWidth: s.container }]}>
+      <Text style={{ fontSize: s.icon, lineHeight: s.icon + 4 }}>
+        {isActive ? '\uD83D\uDD25' : '\u26AA'}
       </Text>
       {isActive && (
-        <Text style={[stylesContainer.text, { fontSize: styles.text, color: COLORS.warning }]}>
-          {streak}
-        </Text>
+        <Text style={[styles.text, { fontSize: s.text }]}>{streak}</Text>
       )}
     </View>
   );
 }
 
-const stylesContainer = StyleSheet.create({
+const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -44,11 +36,8 @@ const stylesContainer = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 6,
   },
-  icon: {
-    lineHeight: 16,
-  },
   text: {
     fontWeight: '700',
-    color: COLORS.warning,
+    color: Colors.warning,
   },
 });

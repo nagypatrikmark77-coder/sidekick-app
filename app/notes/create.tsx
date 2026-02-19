@@ -23,29 +23,17 @@ import {
   attachmentsService,
   pickImage,
   takePhoto,
-  type Priority,
   type Category,
   type Project,
 } from '@/lib/notes-service';
 import { useAuth } from '@/contexts/AuthContext';
-
-const COLORS = {
-  background: '#0A0A0F',
-  card: '#1A1A2E',
-  border: '#2A2A4A',
-  primaryBlue: '#3B82F6',
-  textWhite: '#FFFFFF',
-  textMuted: '#9CA3AF',
-  priorityHigh: '#EF4444',
-  priorityMedium: '#F59E0B',
-  priorityLow: '#22C55E',
-  inputBg: '#1A1A2E',
-};
+import { Colors, PriorityColors } from '@/constants/theme';
+import { type Priority, PRIORITY_LABELS } from '@/types/database';
 
 const PRIORITIES: { value: Priority; label: string; color: string }[] = [
-  { value: 'low', label: 'Alacsony', color: COLORS.priorityLow },
-  { value: 'medium', label: 'Közepes', color: COLORS.priorityMedium },
-  { value: 'high', label: 'Magas', color: COLORS.priorityHigh },
+  { value: 'low', label: PRIORITY_LABELS.low, color: PriorityColors.low },
+  { value: 'medium', label: PRIORITY_LABELS.medium, color: PriorityColors.medium },
+  { value: 'high', label: PRIORITY_LABELS.high, color: PriorityColors.high },
 ];
 
 const CATEGORIES: { value: Category; label: string }[] = [
@@ -70,7 +58,7 @@ export default function CreateNote() {
   const [attachments, setAttachments] = useState<{ uri: string; fileName: string }[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [saving, setSaving] = useState(false);
-  const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadProjects();
@@ -194,9 +182,9 @@ export default function CreateNote() {
 
   const getTagColor = (tag: string) => {
     const colors = [
-      COLORS.primaryBlue,
-      COLORS.priorityMedium,
-      COLORS.priorityLow,
+      Colors.primary,
+      PriorityColors.medium,
+      PriorityColors.low,
       '#A855F7',
       '#EC4899',
     ];
@@ -207,7 +195,7 @@ export default function CreateNote() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Feather name="x" size={24} color={COLORS.textWhite} />
+          <Feather name="x" size={24} color={Colors.textWhite} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Új jegyzet</Text>
         <TouchableOpacity
@@ -223,7 +211,7 @@ export default function CreateNote() {
         <TextInput
           style={styles.titleInput}
           placeholder="Cím"
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={Colors.textMuted}
           value={title}
           onChangeText={setTitle}
           multiline
@@ -232,7 +220,7 @@ export default function CreateNote() {
         <TextInput
           style={styles.contentInput}
           placeholder="Jegyzet tartalma..."
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={Colors.textMuted}
           value={content}
           onChangeText={setContent}
           multiline
@@ -341,14 +329,14 @@ export default function CreateNote() {
               <TextInput
                 style={styles.tagInput}
                 placeholder="Címke hozzáadása"
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={Colors.textMuted}
                 value={tagInput}
                 onChangeText={setTagInput}
                 onSubmitEditing={handleAddTag}
                 returnKeyType="done"
               />
               <TouchableOpacity onPress={handleAddTag} style={styles.tagAddButton}>
-                <Feather name="plus" size={20} color={COLORS.primaryBlue} />
+                <Feather name="plus" size={20} color={Colors.primary} />
               </TouchableOpacity>
             </View>
             {tags.length > 0 && (
@@ -360,7 +348,7 @@ export default function CreateNote() {
                     onPress={() => handleRemoveTag(tag)}
                   >
                     <Text style={styles.tagChipText}>{tag}</Text>
-                    <Feather name="x" size={14} color={COLORS.textWhite} />
+                    <Feather name="x" size={14} color={Colors.textWhite} />
                   </TouchableOpacity>
                 ))}
               </View>
@@ -373,7 +361,7 @@ export default function CreateNote() {
               style={styles.dateButton}
               onPress={() => setShowDatePicker(true)}
             >
-              <Feather name="calendar" size={20} color={COLORS.textWhite} />
+              <Feather name="calendar" size={20} color={Colors.textWhite} />
               <Text style={styles.dateButtonText}>
                 {dueDate
                   ? dueDate.toLocaleDateString('hu-HU')
@@ -384,7 +372,7 @@ export default function CreateNote() {
                   onPress={() => setDueDate(null)}
                   style={styles.dateRemoveButton}
                 >
-                  <Feather name="x" size={16} color={COLORS.textMuted} />
+                  <Feather name="x" size={16} color={Colors.textMuted} />
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
@@ -393,7 +381,7 @@ export default function CreateNote() {
           <View style={styles.actionSection}>
             <Text style={styles.actionLabel}>Fényképek</Text>
             <TouchableOpacity style={styles.photoButton} onPress={handleAddPhoto}>
-              <Feather name="camera" size={20} color={COLORS.primaryBlue} />
+              <Feather name="camera" size={20} color={Colors.primary} />
               <Text style={styles.photoButtonText}>Fénykép hozzáadása</Text>
             </TouchableOpacity>
             {attachments.length > 0 && (
@@ -405,7 +393,7 @@ export default function CreateNote() {
                       style={styles.attachmentRemove}
                       onPress={() => handleRemoveAttachment(index)}
                     >
-                      <Feather name="x" size={16} color={COLORS.textWhite} />
+                      <Feather name="x" size={16} color={Colors.textWhite} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -420,7 +408,7 @@ export default function CreateNote() {
           value={dueDate || new Date()}
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={(event, selectedDate) => {
+          onChange={(event: any, selectedDate: any) => {
             setShowDatePicker(Platform.OS === 'ios');
             if (selectedDate) {
               setDueDate(selectedDate);
@@ -435,7 +423,7 @@ export default function CreateNote() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -445,7 +433,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   headerButton: {
     padding: 8,
@@ -453,16 +441,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   saveButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: COLORS.primaryBlue,
+    backgroundColor: Colors.primary,
   },
   saveButtonText: {
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -475,13 +463,13 @@ const styles = StyleSheet.create({
   titleInput: {
     fontSize: 28,
     fontWeight: '700',
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     marginBottom: 16,
     minHeight: 50,
   },
   contentInput: {
     fontSize: 16,
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     lineHeight: 24,
     minHeight: 200,
     marginBottom: 24,
@@ -495,7 +483,7 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -505,15 +493,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     marginRight: 8,
     gap: 6,
   },
   projectOptionActive: {
-    backgroundColor: COLORS.primaryBlue,
-    borderColor: COLORS.primaryBlue,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   projectDot: {
     width: 8,
@@ -522,11 +510,11 @@ const styles = StyleSheet.create({
   },
   projectOptionText: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontWeight: '600',
   },
   projectOptionTextActive: {
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   priorityContainer: {
     flexDirection: 'row',
@@ -538,14 +526,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     gap: 6,
   },
   priorityOptionActive: {
-    backgroundColor: COLORS.card,
-    borderColor: COLORS.primaryBlue,
+    backgroundColor: Colors.card,
+    borderColor: Colors.primary,
     borderWidth: 2,
   },
   priorityDot: {
@@ -555,11 +543,11 @@ const styles = StyleSheet.create({
   },
   priorityOptionText: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontWeight: '600',
   },
   priorityOptionTextActive: {
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   categoryContainer: {
     flexDirection: 'row',
@@ -570,35 +558,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   categoryOptionActive: {
-    backgroundColor: COLORS.primaryBlue,
-    borderColor: COLORS.primaryBlue,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   categoryOptionText: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: Colors.textMuted,
     fontWeight: '600',
   },
   categoryOptionTextActive: {
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
   },
   tagInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: Colors.inputBg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     paddingHorizontal: 12,
   },
   tagInput: {
     flex: 1,
     fontSize: 14,
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     paddingVertical: 10,
   },
   tagAddButton: {
@@ -619,16 +607,16 @@ const styles = StyleSheet.create({
   },
   tagChipText: {
     fontSize: 12,
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     fontWeight: '600',
   },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     paddingHorizontal: 12,
     paddingVertical: 12,
     gap: 8,
@@ -636,7 +624,7 @@ const styles = StyleSheet.create({
   dateButtonText: {
     flex: 1,
     fontSize: 14,
-    color: COLORS.textWhite,
+    color: Colors.textWhite,
     fontWeight: '600',
   },
   dateRemoveButton: {
@@ -645,17 +633,17 @@ const styles = StyleSheet.create({
   photoButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     paddingHorizontal: 12,
     paddingVertical: 12,
     gap: 8,
   },
   photoButtonText: {
     fontSize: 14,
-    color: COLORS.primaryBlue,
+    color: Colors.primary,
     fontWeight: '600',
   },
   attachmentsContainer: {

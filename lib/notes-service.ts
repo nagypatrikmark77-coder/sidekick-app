@@ -1,50 +1,24 @@
 import { supabase } from './supabase';
 import * as ImagePicker from 'expo-image-picker';
+import type { Note, NoteAttachment, Project, Priority, NoteCategory } from '@/types/database';
 
-export type Priority = 'low' | 'medium' | 'high';
-export type Category = 'munka' | 'suli' | 'személyes' | 'egyéb';
+// Re-export types for convenience
+export type { Note, NoteAttachment, Project, Priority, NoteCategory } from '@/types/database';
+export type Category = NoteCategory;
 
-export interface Project {
-  id: string;
-  name: string;
-  color: string;
-  category?: string;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
+// ── Shared auth helper ────────────────────────────────────────────────────────
+
+async function getSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not authenticated');
+  return session;
 }
 
-export interface Note {
-  id: string;
-  title: string;
-  content: string;
-  priority: Priority;
-  category: Category;
-  tags: string[];
-  project_id: string | null;
-  due_date: string | null;
-  pinned: boolean;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-}
+// ── Notes CRUD ────────────────────────────────────────────────────────────────
 
-export interface NoteAttachment {
-  id: string;
-  note_id: string;
-  file_path: string;
-  file_name: string;
-  file_size: number;
-  mime_type: string;
-  created_at: string;
-}
-
-// Notes CRUD
 export const notesService = {
-  // Get all notes for current user
   async getNotes(projectId?: string | null): Promise<Note[]> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
     let query = supabase
       .from('notes')
@@ -66,10 +40,8 @@ export const notesService = {
     return data || [];
   },
 
-  // Get single note
   async getNote(id: string): Promise<Note | null> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
     const { data, error } = await supabase
       .from('notes')
@@ -85,17 +57,12 @@ export const notesService = {
     return data;
   },
 
-  // Create note
   async createNote(note: Omit<Note, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Note> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
     const { data, error } = await supabase
       .from('notes')
-      .insert({
-        ...note,
-        user_id: session.user.id,
-      })
+      .insert({ ...note, user_id: session.user.id })
       .select()
       .single();
 
@@ -103,17 +70,12 @@ export const notesService = {
     return data;
   },
 
-  // Update note
   async updateNote(id: string, updates: Partial<Omit<Note, 'id' | 'user_id' | 'created_at'>>): Promise<Note> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
     const { data, error } = await supabase
       .from('notes')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('user_id', session.user.id)
       .select()
@@ -123,12 +85,9 @@ export const notesService = {
     return data;
   },
 
-  // Delete note
   async deleteNote(id: string): Promise<void> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
-    // Delete attachments first
     await attachmentsService.deleteNoteAttachments(id);
 
     const { error } = await supabase
@@ -140,21 +99,18 @@ export const notesService = {
     if (error) throw error;
   },
 
-  // Toggle pin
   async togglePin(id: string): Promise<Note> {
     const note = await this.getNote(id);
     if (!note) throw new Error('Note not found');
-
     return this.updateNote(id, { pinned: !note.pinned });
   },
 };
 
-// Projects CRUD
+// ── Projects CRUD ─────────────────────────────────────────────────────────────
+
 export const projectsService = {
-  // Get all projects for current user
   async getProjects(): Promise<Project[]> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
     const { data, error } = await supabase
       .from('projects')
@@ -166,10 +122,8 @@ export const projectsService = {
     return data || [];
   },
 
-  // Get single project
   async getProject(id: string): Promise<Project | null> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
     const { data, error } = await supabase
       .from('projects')
@@ -185,17 +139,12 @@ export const projectsService = {
     return data;
   },
 
-  // Create project
   async createProject(project: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Project> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
     const { data, error } = await supabase
       .from('projects')
-      .insert({
-        ...project,
-        user_id: session.user.id,
-      })
+      .insert({ ...project, user_id: session.user.id })
       .select()
       .single();
 
@@ -203,17 +152,12 @@ export const projectsService = {
     return data;
   },
 
-  // Update project
   async updateProject(id: string, updates: Partial<Omit<Project, 'id' | 'user_id' | 'created_at'>>): Promise<Project> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
     const { data, error } = await supabase
       .from('projects')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('user_id', session.user.id)
       .select()
@@ -223,12 +167,9 @@ export const projectsService = {
     return data;
   },
 
-  // Delete project
   async deleteProject(id: string): Promise<void> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
-    // Remove project from notes
     await supabase
       .from('notes')
       .update({ project_id: null })
@@ -244,10 +185,8 @@ export const projectsService = {
     if (error) throw error;
   },
 
-  // Get note count for project
   async getProjectNoteCount(projectId: string | null): Promise<number> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
     let query = supabase
       .from('notes')
@@ -266,12 +205,11 @@ export const projectsService = {
   },
 };
 
-// Attachments CRUD
+// ── Attachments ───────────────────────────────────────────────────────────────
+
 export const attachmentsService = {
-  // Get attachments for a note
   async getNoteAttachments(noteId: string): Promise<NoteAttachment[]> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    await getSession();
 
     const { data, error } = await supabase
       .from('note_attachments')
@@ -283,32 +221,20 @@ export const attachmentsService = {
     return data || [];
   },
 
-  // Upload attachment
   async uploadAttachment(noteId: string, uri: string, fileName: string): Promise<NoteAttachment> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
-    // Read file
     const response = await fetch(uri);
     const blob = await response.blob();
     const fileExt = fileName.split('.').pop();
     const filePath = `${session.user.id}/${noteId}/${Date.now()}.${fileExt}`;
 
-    // Upload to storage
     const { error: uploadError } = await supabase.storage
       .from('note-attachments')
-      .upload(filePath, blob, {
-        contentType: blob.type,
-      });
+      .upload(filePath, blob, { contentType: blob.type });
 
     if (uploadError) throw uploadError;
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('note-attachments')
-      .getPublicUrl(filePath);
-
-    // Create attachment record
     const { data, error } = await supabase
       .from('note_attachments')
       .insert({
@@ -325,12 +251,9 @@ export const attachmentsService = {
     return data;
   },
 
-  // Delete attachment
   async deleteAttachment(attachmentId: string): Promise<void> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const session = await getSession();
 
-    // Get attachment to get file path
     const { data: attachment, error: fetchError } = await supabase
       .from('note_attachments')
       .select('file_path, note_id')
@@ -339,18 +262,15 @@ export const attachmentsService = {
 
     if (fetchError) throw fetchError;
 
-    // Verify note belongs to user
     const note = await notesService.getNote(attachment.note_id);
     if (!note || note.user_id !== session.user.id) {
       throw new Error('Unauthorized');
     }
 
-    // Delete from storage
     await supabase.storage
       .from('note-attachments')
       .remove([attachment.file_path]);
 
-    // Delete record
     const { error } = await supabase
       .from('note_attachments')
       .delete()
@@ -359,23 +279,16 @@ export const attachmentsService = {
     if (error) throw error;
   },
 
-  // Delete all attachments for a note
   async deleteNoteAttachments(noteId: string): Promise<void> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    await getSession();
 
-    // Get all attachments
     const attachments = await this.getNoteAttachments(noteId);
 
-    // Delete from storage
     const filePaths = attachments.map(a => a.file_path);
     if (filePaths.length > 0) {
-      await supabase.storage
-        .from('note-attachments')
-        .remove(filePaths);
+      await supabase.storage.from('note-attachments').remove(filePaths);
     }
 
-    // Delete records
     const { error } = await supabase
       .from('note_attachments')
       .delete()
@@ -384,7 +297,6 @@ export const attachmentsService = {
     if (error) throw error;
   },
 
-  // Get public URL for attachment
   getAttachmentUrl(filePath: string): string {
     const { data: { publicUrl } } = supabase.storage
       .from('note-attachments')
@@ -393,14 +305,13 @@ export const attachmentsService = {
   },
 };
 
-// Image picker helper
+// ── Image picker helpers ──────────────────────────────────────────────────────
+
 export async function pickImage(): Promise<string | null> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    if (cameraStatus !== 'granted') {
-      return null;
-    }
+    if (cameraStatus !== 'granted') return null;
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -415,9 +326,7 @@ export async function pickImage(): Promise<string | null> {
 
 export async function takePhoto(): Promise<string | null> {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
-  if (status !== 'granted') {
-    return null;
-  }
+  if (status !== 'granted') return null;
 
   const result = await ImagePicker.launchCameraAsync({
     allowsEditing: true,

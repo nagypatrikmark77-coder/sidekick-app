@@ -8,7 +8,8 @@
       "Bash(npm install:*)",
       "Bash(npx expo start)",
       "Bash(npx expo start:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
