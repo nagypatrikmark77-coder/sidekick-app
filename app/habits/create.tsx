@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorOptionActive: {
-    borderColor: Colors.textWhite,
+    borderColor: Colors.primary,
   },
   frequencyContainer: {
     flexDirection: 'row',

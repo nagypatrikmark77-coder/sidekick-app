@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorOptionActive: {
-    borderColor: Colors.textWhite,
+    borderColor: Colors.primary,
   },
   modalFooter: {
     flexDirection: 'row',
