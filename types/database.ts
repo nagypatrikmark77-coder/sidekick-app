@@ -2,7 +2,7 @@
 
 // ── Notes ─────────────────────────────────────────────────────────────────────
 export type Priority = 'low' | 'medium' | 'high';
-export type NoteCategory = 'munka' | 'suli' | 'személyes' | 'egyéb';
+export type NoteCategory = 'munka' | 'tanulás' | 'személyes' | 'ötlet' | 'feladat' | 'egyéb';
 
 export interface Note {
   id: string;
@@ -13,7 +13,7 @@ export interface Note {
   tags: string[];
   project_id: string | null;
   due_date: string | null;
-  pinned: boolean;
+  is_pinned: boolean;
   user_id: string;
   created_at: string;
   updated_at: string;
@@ -43,6 +43,8 @@ export interface Project {
 // ── Habits ────────────────────────────────────────────────────────────────────
 export type HabitFrequency = 'daily' | 'weekly' | 'custom';
 export type HabitCategory = 'munka' | 'egészség' | 'tanulás' | 'sport' | 'egyéb';
+// TODO: energy_level will be a Supabase DB column later
+export type EnergyLevel = 'low' | 'medium' | 'high';
 
 export interface Habit {
   id: string;
@@ -55,6 +57,7 @@ export interface Habit {
   category: HabitCategory;
   target_count: number;
   is_archived: boolean;
+  energy_level?: EnergyLevel; // TODO: add as DB column later
   user_id: string;
   created_at: string;
   updated_at: string;
@@ -63,7 +66,7 @@ export interface Habit {
 export interface HabitLog {
   id: string;
   habit_id: string;
-  date: string;
+  completed_at: string;
   count: number;
   user_id: string;
   created_at: string;
@@ -120,6 +123,8 @@ export const CATEGORY_LABELS: Record<string, string> = {
   egyéb: 'Egyéb',
   suli: 'Suli',
   személyes: 'Személyes',
+  ötlet: 'Ötlet',
+  feladat: 'Feladat',
 };
 
 export const FREQUENCY_LABELS: Record<string, string> = {
@@ -129,6 +134,12 @@ export const FREQUENCY_LABELS: Record<string, string> = {
 };
 
 export const PRIORITY_LABELS: Record<Priority, string> = {
+  low: 'Alacsony',
+  medium: 'Közepes',
+  high: 'Magas',
+};
+
+export const ENERGY_LABELS: Record<EnergyLevel, string> = {
   low: 'Alacsony',
   medium: 'Közepes',
   high: 'Magas',

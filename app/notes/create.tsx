@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,15 +8,17 @@ import {
   ScrollView,
   Alert,
   Platform,
+  Modal,
+  KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-// DateTimePicker is not available on web, we'll use a simple date input fallback
+import { Image } from 'expo-image';
 let DateTimePicker: any;
 if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
-import { Image } from 'expo-image';
 import {
   notesService,
   projectsService,
@@ -27,21 +29,39 @@ import {
   type Project,
 } from '@/lib/notes-service';
 import { useAuth } from '@/contexts/AuthContext';
-import { Colors, PriorityColors } from '@/constants/theme';
-import { type Priority, PRIORITY_LABELS } from '@/types/database';
+import { Colors, PriorityColors, PresetColors, Spacing, Radius, FontSize, FontWeight, HEADER_PADDING_TOP } from '@/constants/theme';
+import { type Priority, type NoteCategory, PRIORITY_LABELS, CATEGORY_LABELS } from '@/types/database';
+
+const SCREEN_BG = '#0A0A0F';
+const CARD_BG = '#1A1A2E';
+const BORDER_COLOR = '#2A2A4A';
+
+const ACCENT_COLORS = [
+  '#3B82F6', '#EF4444', '#22C55E', '#F59E0B',
+  '#A855F7', '#EC4899', '#06B6D4', '#F97316',
+];
+
+const TAG_PASTEL_COLORS = [
+  '#6366F1', '#8B5CF6', '#A855F7', '#EC4899',
+  '#F43F5E', '#3B82F6', '#06B6D4', '#14B8A6',
+];
+
+const CATEGORIES: { value: NoteCategory; label: string }[] = [
+  { value: 'munka', label: 'Munka' },
+  { value: 'tanulás', label: 'Tanulas' },
+  { value: 'személyes', label: 'Szemelyes' },
+  { value: 'ötlet', label: 'Otlet' },
+  { value: 'feladat', label: 'Feladat' },
+  { value: 'egyéb', label: 'Egyeb' },
+];
 
 const PRIORITIES: { value: Priority; label: string; color: string }[] = [
-  { value: 'low', label: PRIORITY_LABELS.low, color: PriorityColors.low },
-  { value: 'medium', label: PRIORITY_LABELS.medium, color: PriorityColors.medium },
-  { value: 'high', label: PRIORITY_LABELS.high, color: PriorityColors.high },
+  { value: 'high', label: 'Magas', color: '#EF4444' },
+  { value: 'medium', label: 'Kozepes', color: '#F59E0B' },
+  { value: 'low', label: 'Alacsony', color: '#22C55E' },
 ];
 
-const CATEGORIES: { value: Category; label: string }[] = [
-  { value: 'munka', label: 'Munka' },
-  { value: 'suli', label: 'Suli' },
-  { value: 'személyes', label: 'Személyes' },
-  { value: 'egyéb', label: 'Egyéb' },
-];
+type ActiveSheet = 'color' | 'project' | 'tag' | 'priority' | 'category' | 'date' | 'photo' | null;
 
 export default function CreateNote() {
   const router = useRouter();
@@ -49,38 +69,43 @@ export default function CreateNote() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
-  const [category, setCategory] = useState<Category>('egyéb');
+  const [category, setCategory] = useState<NoteCategory>('egyéb');
   const [projectId, setProjectId] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [accentColor, setAccentColor] = useState<string>('#3B82F6');
   const [attachments, setAttachments] = useState<{ uri: string; fileName: string }[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
+
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    loadProjects();
+    if (user) loadProjects();
   }, [user]);
 
+  // Auto-save after 2 seconds of inactivity
   useEffect(() => {
-    // Auto-save after 3 seconds of inactivity
-    if (autoSaveTimer.current) {
-      clearTimeout(autoSaveTimer.current);
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+
+    if ((title.trim() || content.trim()) && user) {
+      console.log('[create.tsx] Auto-save timer set, will trigger in 2 seconds');
+      autoSaveTimer.current = setTimeout(() => {
+        console.log('[create.tsx] Auto-save triggered');
+        handleAutoSave();
+      }, 2000);
     }
-    autoSaveTimer.current = setTimeout(() => {
-      if (title || content) {
-        handleSave(true);
-      }
-    }, 3000);
 
     return () => {
-      if (autoSaveTimer.current) {
-        clearTimeout(autoSaveTimer.current);
-      }
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     };
-  }, [title, content, priority, category, projectId, tags, dueDate, attachments]);
+  }, [title, content, priority, category, projectId, tags, dueDate, accentColor, user]);
 
   const loadProjects = async () => {
     try {
@@ -88,6 +113,140 @@ export default function CreateNote() {
       setProjects(data);
     } catch (error) {
       console.error('Error loading projects:', error);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!title.trim() && !content.trim()) {
+      Alert.alert('Hiba', 'Adj meg legalább egy címet vagy tartalmat!');
+      return;
+    }
+
+    if (!user) {
+      Alert.alert('Hiba', 'Nincs bejelentkezve felhasználó.');
+      return;
+    }
+
+    setSaveStatus('saving');
+    try {
+      const noteData = {
+        title: title.trim() || 'Cím nélküli jegyzet',
+        content: content.trim(),
+        priority,
+        category,
+        project_id: projectId,
+        tags,
+        due_date: dueDate?.toISOString() || null,
+        is_pinned: false,
+      };
+
+      let noteId: string;
+      if (savedNoteId) {
+        console.log('Updating note:', savedNoteId);
+        const updatedNote = await notesService.updateNote(savedNoteId, noteData);
+        noteId = updatedNote.id;
+        console.log('Note updated successfully:', noteId);
+      } else {
+        console.log('Creating new note...');
+        const note = await notesService.createNote(noteData);
+        noteId = note.id;
+        setSavedNoteId(note.id);
+        console.log('Note created successfully:', noteId);
+      }
+
+      // Upload any pending attachments (for both new and existing notes)
+      if (attachments.length > 0) {
+        console.log(`Uploading ${attachments.length} attachment(s)...`);
+        for (const attachment of attachments) {
+          try {
+            await attachmentsService.uploadAttachment(noteId, attachment.uri, attachment.fileName);
+            console.log('Attachment uploaded:', attachment.fileName);
+          } catch (error) {
+            console.error('Error uploading attachment:', error);
+            Alert.alert('Figyelem', `Nem sikerült feltölteni a mellékletet: ${attachment.fileName}`);
+          }
+        }
+      }
+
+      // Clear attachments after successful upload
+      setAttachments([]);
+      
+      setSaveStatus('saved');
+      console.log('Note saved successfully, navigating back...');
+      // Navigate back to notes page after successful save
+      setTimeout(() => {
+        router.back();
+      }, 1000);
+    } catch (error: any) {
+      console.error('Error saving note:', error);
+      const errorMessage = error?.message || 'Ismeretlen hiba történt.';
+      Alert.alert('Hiba', `Nem sikerült menteni a jegyzetet: ${errorMessage}`);
+      setSaveStatus('idle');
+    }
+  };
+
+  const handleAutoSave = async () => {
+    if (!title.trim() && !content.trim()) {
+      console.log('[create.tsx] Auto-save skipped: no content');
+      return;
+    }
+
+    if (!user) {
+      console.error('[create.tsx] Auto-save failed: no user');
+      return;
+    }
+
+    console.log('[create.tsx] Auto-save starting...');
+    setSaveStatus('saving');
+    try {
+      const noteData = {
+        title: title.trim() || 'Cím nélküli jegyzet',
+        content: content.trim(),
+        priority,
+        category,
+        project_id: projectId,
+        tags,
+        due_date: dueDate?.toISOString() || null,
+        is_pinned: false,
+      };
+
+      console.log('[create.tsx] Auto-save note data:', noteData);
+
+      if (savedNoteId) {
+        console.log('[create.tsx] Auto-save: updating existing note', savedNoteId);
+        await notesService.updateNote(savedNoteId, noteData);
+        console.log('[create.tsx] Auto-save: note updated successfully');
+      } else {
+        console.log('[create.tsx] Auto-save: creating new note');
+        const note = await notesService.createNote(noteData);
+        setSavedNoteId(note.id);
+        console.log('[create.tsx] Auto-save: note created successfully with ID:', note.id);
+
+        // Upload any pending attachments
+        if (attachments.length > 0) {
+          console.log(`[create.tsx] Auto-save: uploading ${attachments.length} attachment(s)`);
+          for (const attachment of attachments) {
+            try {
+              await attachmentsService.uploadAttachment(note.id, attachment.uri, attachment.fileName);
+              console.log('[create.tsx] Auto-save: attachment uploaded:', attachment.fileName);
+            } catch (error) {
+              console.error('[create.tsx] Auto-save: error uploading attachment:', error);
+            }
+          }
+        }
+      }
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+      console.log('[create.tsx] Auto-save completed successfully');
+    } catch (error: any) {
+      console.error('[create.tsx] Auto-save error:', error);
+      console.error('[create.tsx] Auto-save error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+      });
+      setSaveStatus('idle');
     }
   };
 
@@ -103,306 +262,271 @@ export default function CreateNote() {
     setTags(tags.filter(t => t !== tag));
   };
 
-  const handleAddPhoto = async () => {
-    Alert.alert(
-      'Fénykép hozzáadása',
-      'Válassz forrást',
-      [
-        { text: 'Mégse', style: 'cancel' },
-        {
-          text: 'Kamera',
-          onPress: async () => {
+  const handleAddAttachment = async () => {
+    Alert.alert('Melléklet hozzáadása', 'Válassz forrást', [
+      { text: 'Mégse', style: 'cancel' },
+      {
+        text: 'Kamera',
+        onPress: async () => {
+          try {
             const uri = await takePhoto();
             if (uri) {
               const fileName = `photo_${Date.now()}.jpg`;
               setAttachments([...attachments, { uri, fileName }]);
             }
-          },
+          } catch (error) {
+            console.error('Error taking photo:', error);
+            Alert.alert('Hiba', 'Nem sikerült fényképet készíteni.');
+          }
         },
-        {
-          text: 'Galéria',
-          onPress: async () => {
+      },
+      {
+        text: 'Galéria',
+        onPress: async () => {
+          try {
             const uri = await pickImage();
             if (uri) {
               const fileName = `photo_${Date.now()}.jpg`;
               setAttachments([...attachments, { uri, fileName }]);
             }
-          },
+          } catch (error) {
+            console.error('Error picking image:', error);
+            Alert.alert('Hiba', 'Nem sikerült képet választani.');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const handleRemoveAttachment = (index: number) => {
-    setAttachments(attachments.filter((_, i) => i !== index));
-  };
-
-  const handleSave = async (silent = false) => {
-    if (!title.trim() && !content.trim()) {
-      if (!silent) {
-        Alert.alert('Hiba', 'A cím vagy tartalom megadása kötelező.');
-      }
+  const handleDelete = async () => {
+    if (!savedNoteId) {
+      router.back();
       return;
     }
-
-    setSaving(true);
-    try {
-      const note = await notesService.createNote({
-        title: title.trim() || 'Cím nélküli jegyzet',
-        content: content.trim(),
-        priority,
-        category,
-        project_id: projectId,
-        tags,
-        due_date: dueDate?.toISOString() || null,
-        pinned: false,
-      });
-
-      // Upload attachments
-      for (const attachment of attachments) {
-        try {
-          await attachmentsService.uploadAttachment(note.id, attachment.uri, attachment.fileName);
-        } catch (error) {
-          console.error('Error uploading attachment:', error);
-        }
-      }
-
-      if (!silent) {
-        router.back();
-      }
-    } catch (error) {
-      console.error('Error saving note:', error);
-      if (!silent) {
-        Alert.alert('Hiba', 'Nem sikerült menteni a jegyzetet.');
-      }
-    } finally {
-      setSaving(false);
-    }
+    Alert.alert('Jegyzet torlese', 'Biztosan torolni szeretned?', [
+      { text: 'Megse', style: 'cancel' },
+      {
+        text: 'Torles',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await notesService.deleteNote(savedNoteId);
+            router.back();
+          } catch (error) {
+            Alert.alert('Hiba', 'Nem sikerult torolni.');
+          }
+        },
+      },
+    ]);
   };
 
   const getTagColor = (tag: string) => {
-    const colors = [
-      Colors.primary,
-      PriorityColors.medium,
-      PriorityColors.low,
-      '#A855F7',
-      '#EC4899',
-    ];
-    return colors[tag.length % colors.length];
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return TAG_PASTEL_COLORS[Math.abs(hash) % TAG_PASTEL_COLORS.length];
+  };
+
+  const getProjectName = (id: string | null) => {
+    if (!id) return null;
+    return projects.find(p => p.id === id);
   };
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Feather name="x" size={24} color={Colors.textWhite} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+          <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Új jegyzet</Text>
-        <TouchableOpacity
-          onPress={() => handleSave(false)}
-          style={styles.saveButton}
-          disabled={saving}
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitleText}>Új jegyzet</Text>
+        </View>
+
+        <TouchableOpacity 
+          onPress={async () => {
+            console.log('[create.tsx] Manual save button pressed');
+            console.log('[create.tsx] Current state:', {
+              title: title.trim(),
+              content: content.trim(),
+              user: user?.id,
+              savedNoteId,
+            });
+            await handleSave();
+          }} 
+          style={styles.headerBtn}
+          disabled={saveStatus === 'saving'}
         >
-          <Text style={styles.saveButtonText}>{saving ? 'Mentés...' : 'Mentés'}</Text>
+          {saveStatus === 'saving' ? (
+            <Text style={styles.saveButtonText}>Mentés...</Text>
+          ) : saveStatus === 'saved' ? (
+            <View style={styles.savedButtonRow}>
+              <Feather name="check" size={18} color="#22C55E" />
+            </View>
+          ) : (
+            <Feather name="save" size={24} color={Colors.primary} />
+          )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        <TextInput
-          style={styles.titleInput}
-          placeholder="Cím"
-          placeholderTextColor={Colors.textMuted}
-          value={title}
-          onChangeText={setTitle}
-          multiline
-        />
+      {/* Editor */}
+      <KeyboardAvoidingView
+        style={styles.editorWrapper}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          style={styles.editor}
+          contentContainerStyle={styles.editorContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <TextInput
+            style={styles.titleInput}
+            placeholder="Jegyzet cime..."
+            placeholderTextColor={Colors.textMuted}
+            value={title}
+            onChangeText={setTitle}
+            returnKeyType="next"
+            onSubmitEditing={() => contentInputRef.current?.focus()}
+            blurOnSubmit={false}
+          />
 
-        <TextInput
-          style={styles.contentInput}
-          placeholder="Jegyzet tartalma..."
-          placeholderTextColor={Colors.textMuted}
-          value={content}
-          onChangeText={setContent}
-          multiline
-          textAlignVertical="top"
-        />
-
-        <View style={styles.actionBar}>
-          <View style={styles.actionSection}>
-            <Text style={styles.actionLabel}>Projekt</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <TouchableOpacity
-                style={[
-                  styles.projectOption,
-                  projectId === null && styles.projectOptionActive,
-                ]}
-                onPress={() => setProjectId(null)}
-              >
-                <Text
-                  style={[
-                    styles.projectOptionText,
-                    projectId === null && styles.projectOptionTextActive,
-                  ]}
-                >
-                  Nincs projekt
-                </Text>
-              </TouchableOpacity>
-              {projects.map(project => (
+          {/* Tags display below title */}
+          {tags.length > 0 && (
+            <View style={styles.tagsDisplay}>
+              {tags.map((tag, index) => (
                 <TouchableOpacity
-                  key={project.id}
-                  style={[
-                    styles.projectOption,
-                    projectId === project.id && styles.projectOptionActive,
-                  ]}
-                  onPress={() => setProjectId(project.id)}
+                  key={index}
+                  style={[styles.tagPill, { backgroundColor: getTagColor(tag) + '30' }]}
+                  onPress={() => handleRemoveTag(tag)}
                 >
-                  <View
-                    style={[styles.projectDot, { backgroundColor: project.color }]}
-                  />
-                  <Text
-                    style={[
-                      styles.projectOptionText,
-                      projectId === project.id && styles.projectOptionTextActive,
-                    ]}
-                  >
-                    {project.name}
-                  </Text>
+                  <Text style={[styles.tagPillText, { color: getTagColor(tag) }]}>{tag}</Text>
+                  <Feather name="x" size={12} color={getTagColor(tag)} />
                 </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <TextInput
+            ref={contentInputRef}
+            style={styles.contentInput}
+            placeholder="Kezdj el irni..."
+            placeholderTextColor={Colors.textMuted}
+            value={content}
+            onChangeText={setContent}
+            multiline
+            textAlignVertical="top"
+          />
+
+          {/* Attachments preview */}
+          {attachments.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentsRow}>
+              {attachments.map((att, idx) => (
+                <View key={idx} style={styles.attachmentThumb}>
+                  <Image source={{ uri: att.uri }} style={styles.attachmentImg} />
+                  <TouchableOpacity
+                    style={styles.attachmentRemove}
+                    onPress={() => setAttachments(attachments.filter((_, i) => i !== idx))}
+                  >
+                    <Feather name="x" size={14} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
               ))}
             </ScrollView>
-          </View>
+          )}
+        </ScrollView>
 
-          <View style={styles.actionSection}>
-            <Text style={styles.actionLabel}>Prioritás</Text>
-            <View style={styles.priorityContainer}>
-              {PRIORITIES.map(p => (
-                <TouchableOpacity
-                  key={p.value}
-                  style={[
-                    styles.priorityOption,
-                    priority === p.value && styles.priorityOptionActive,
-                  ]}
-                  onPress={() => setPriority(p.value)}
-                >
-                  <View style={[styles.priorityDot, { backgroundColor: p.color }]} />
-                  <Text
-                    style={[
-                      styles.priorityOptionText,
-                      priority === p.value && styles.priorityOptionTextActive,
-                    ]}
-                  >
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.actionSection}>
-            <Text style={styles.actionLabel}>Kategória</Text>
-            <View style={styles.categoryContainer}>
-              {CATEGORIES.map(c => (
-                <TouchableOpacity
-                  key={c.value}
-                  style={[
-                    styles.categoryOption,
-                    category === c.value && styles.categoryOptionActive,
-                  ]}
-                  onPress={() => setCategory(c.value)}
-                >
-                  <Text
-                    style={[
-                      styles.categoryOptionText,
-                      category === c.value && styles.categoryOptionTextActive,
-                    ]}
-                  >
-                    {c.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.actionSection}>
-            <Text style={styles.actionLabel}>Címkék</Text>
-            <View style={styles.tagInputContainer}>
-              <TextInput
-                style={styles.tagInput}
-                placeholder="Címke hozzáadása"
-                placeholderTextColor={Colors.textMuted}
-                value={tagInput}
-                onChangeText={setTagInput}
-                onSubmitEditing={handleAddTag}
-                returnKeyType="done"
-              />
-              <TouchableOpacity onPress={handleAddTag} style={styles.tagAddButton}>
-                <Feather name="plus" size={20} color={Colors.primary} />
-              </TouchableOpacity>
-            </View>
-            {tags.length > 0 && (
-              <View style={styles.tagsContainer}>
-                {tags.map((tag, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.tagChip, { backgroundColor: getTagColor(tag) }]}
-                    onPress={() => handleRemoveTag(tag)}
-                  >
-                    <Text style={styles.tagChipText}>{tag}</Text>
-                    <Feather name="x" size={14} color={Colors.textWhite} />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-
-          <View style={styles.actionSection}>
-            <Text style={styles.actionLabel}>Határidő</Text>
+        {/* Bottom Toolbar */}
+        <View style={styles.toolbar}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.toolbarContent}
+          >
             <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowDatePicker(true)}
+              style={styles.toolbarItem}
+              onPress={() => setActiveSheet('color')}
             >
-              <Feather name="calendar" size={20} color={Colors.textWhite} />
-              <Text style={styles.dateButtonText}>
-                {dueDate
-                  ? dueDate.toLocaleDateString('hu-HU')
-                  : 'Határidő beállítása'}
+              <View style={[styles.toolbarColorDot, { backgroundColor: accentColor }]} />
+              <Text style={styles.toolbarLabel}>Szin</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolbarItem}
+              onPress={() => setActiveSheet('project')}
+            >
+              <Feather name="folder" size={18} color={projectId ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.toolbarLabel, projectId && { color: Colors.primary }]}>
+                {projectId ? (getProjectName(projectId)?.name || 'Projekt') : 'Projekt'}
               </Text>
-              {dueDate && (
-                <TouchableOpacity
-                  onPress={() => setDueDate(null)}
-                  style={styles.dateRemoveButton}
-                >
-                  <Feather name="x" size={16} color={Colors.textMuted} />
-                </TouchableOpacity>
-              )}
             </TouchableOpacity>
-          </View>
 
-          <View style={styles.actionSection}>
-            <Text style={styles.actionLabel}>Fényképek</Text>
-            <TouchableOpacity style={styles.photoButton} onPress={handleAddPhoto}>
-              <Feather name="camera" size={20} color={Colors.primary} />
-              <Text style={styles.photoButtonText}>Fénykép hozzáadása</Text>
+            <TouchableOpacity
+              style={styles.toolbarItem}
+              onPress={() => setActiveSheet('tag')}
+            >
+              <Feather name="tag" size={18} color={tags.length > 0 ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.toolbarLabel, tags.length > 0 && { color: Colors.primary }]}>
+                Cimke{tags.length > 0 ? ` (${tags.length})` : ''}
+              </Text>
             </TouchableOpacity>
-            {attachments.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentsContainer}>
-                {attachments.map((attachment, index) => (
-                  <View key={index} style={styles.attachmentItem}>
-                    <Image source={{ uri: attachment.uri }} style={styles.attachmentImage} />
-                    <TouchableOpacity
-                      style={styles.attachmentRemove}
-                      onPress={() => handleRemoveAttachment(index)}
-                    >
-                      <Feather name="x" size={16} color={Colors.textWhite} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
+
+            <TouchableOpacity
+              style={styles.toolbarItem}
+              onPress={() => setActiveSheet('priority')}
+            >
+              <Feather name="zap" size={18} color={
+                priority === 'high' ? '#EF4444' : priority === 'medium' ? '#F59E0B' : '#22C55E'
+              } />
+              <Text style={[styles.toolbarLabel, {
+                color: priority === 'high' ? '#EF4444' : priority === 'medium' ? '#F59E0B' : '#22C55E'
+              }]}>
+                {PRIORITIES.find(p => p.value === priority)?.label || 'Prioritas'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolbarItem}
+              onPress={() => setActiveSheet('category')}
+            >
+              <Feather name="grid" size={18} color={category !== 'egyéb' ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.toolbarLabel, category !== 'egyéb' && { color: Colors.primary }]}>
+                {CATEGORIES.find(c => c.value === category)?.label || 'Kategoria'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolbarItem}
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  Alert.alert('Hatarido', 'A datumvalaszto nem elerheto weben.');
+                } else {
+                  setShowDatePicker(true);
+                }
+              }}
+            >
+              <Feather name="calendar" size={18} color={dueDate ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.toolbarLabel, dueDate && { color: Colors.primary }]}>
+                {dueDate ? dueDate.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' }) : 'Hatarido'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolbarItem}
+              onPress={handleAddAttachment}
+            >
+              <Feather name="paperclip" size={18} color={attachments.length > 0 ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.toolbarLabel, attachments.length > 0 && { color: Colors.primary }]}>
+                Melléklet{attachments.length > 0 ? ` (${attachments.length})` : ''}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
-      </ScrollView>
+      </KeyboardAvoidingView>
 
+      {/* Date Picker */}
       {showDatePicker && Platform.OS !== 'web' && DateTimePicker && (
         <DateTimePicker
           value={dueDate || new Date()}
@@ -410,12 +534,226 @@ export default function CreateNote() {
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={(event: any, selectedDate: any) => {
             setShowDatePicker(Platform.OS === 'ios');
-            if (selectedDate) {
-              setDueDate(selectedDate);
-            }
+            if (selectedDate) setDueDate(selectedDate);
           }}
         />
       )}
+
+      {/* Menu Modal */}
+      <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
+          <View style={styles.menuContent}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                handleDelete();
+              }}
+            >
+              <Feather name="trash-2" size={18} color="#EF4444" />
+              <Text style={[styles.menuItemText, { color: '#EF4444' }]}>Torles</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                Alert.alert('Megosztas', 'Hamarosan elerheto!');
+              }}
+            >
+              <Feather name="share" size={18} color={Colors.textMuted} />
+              <Text style={styles.menuItemText}>Megosztas</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Bottom Sheet for toolbar options */}
+      <Modal
+        visible={activeSheet !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setActiveSheet(null)}
+      >
+        <TouchableOpacity
+          style={styles.sheetOverlay}
+          activeOpacity={1}
+          onPress={() => setActiveSheet(null)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.sheetContent}>
+            <View style={styles.sheetHandle} />
+
+            {/* Color picker */}
+            {activeSheet === 'color' && (
+              <View style={styles.sheetBody}>
+                <Text style={styles.sheetTitle}>Szin</Text>
+                <View style={styles.colorGrid}>
+                  {ACCENT_COLORS.map(color => (
+                    <TouchableOpacity
+                      key={color}
+                      style={[
+                        styles.colorOption,
+                        { backgroundColor: color },
+                        accentColor === color && styles.colorOptionActive,
+                      ]}
+                      onPress={() => {
+                        setAccentColor(color);
+                        setActiveSheet(null);
+                      }}
+                    >
+                      {accentColor === color && (
+                        <Feather name="check" size={18} color="#FFFFFF" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Project picker */}
+            {activeSheet === 'project' && (
+              <View style={styles.sheetBody}>
+                <Text style={styles.sheetTitle}>Projekt</Text>
+                <TouchableOpacity
+                  style={[styles.sheetOption, !projectId && styles.sheetOptionActive]}
+                  onPress={() => {
+                    setProjectId(null);
+                    setActiveSheet(null);
+                  }}
+                >
+                  <Text style={[styles.sheetOptionText, !projectId && styles.sheetOptionTextActive]}>
+                    Nincs projekt
+                  </Text>
+                </TouchableOpacity>
+                {projects.map(p => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[styles.sheetOption, projectId === p.id && styles.sheetOptionActive]}
+                    onPress={() => {
+                      setProjectId(p.id);
+                      setActiveSheet(null);
+                    }}
+                  >
+                    <View style={[styles.sheetOptionDot, { backgroundColor: p.color }]} />
+                    <Text style={[styles.sheetOptionText, projectId === p.id && styles.sheetOptionTextActive]}>
+                      {p.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Tag input */}
+            {activeSheet === 'tag' && (
+              <View style={styles.sheetBody}>
+                <Text style={styles.sheetTitle}>Cimkek</Text>
+                <View style={styles.tagInputRow}>
+                  <TextInput
+                    style={styles.tagInput}
+                    placeholder="Uj cimke..."
+                    placeholderTextColor={Colors.textMuted}
+                    value={tagInput}
+                    onChangeText={setTagInput}
+                    onSubmitEditing={handleAddTag}
+                    returnKeyType="done"
+                    autoFocus
+                  />
+                  <TouchableOpacity style={styles.tagAddBtn} onPress={handleAddTag}>
+                    <Feather name="plus" size={20} color={Colors.primary} />
+                  </TouchableOpacity>
+                </View>
+                {tags.length > 0 && (
+                  <View style={styles.sheetTags}>
+                    {tags.map((tag, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[styles.sheetTagPill, { backgroundColor: getTagColor(tag) + '30' }]}
+                        onPress={() => handleRemoveTag(tag)}
+                      >
+                        <Text style={[styles.sheetTagText, { color: getTagColor(tag) }]}>{tag}</Text>
+                        <Feather name="x" size={12} color={getTagColor(tag)} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Priority picker */}
+            {activeSheet === 'priority' && (
+              <View style={styles.sheetBody}>
+                <Text style={styles.sheetTitle}>Prioritas</Text>
+                {PRIORITIES.map(p => (
+                  <TouchableOpacity
+                    key={p.value}
+                    style={[styles.sheetOption, priority === p.value && styles.sheetOptionActive]}
+                    onPress={() => {
+                      setPriority(p.value);
+                      setActiveSheet(null);
+                    }}
+                  >
+                    <View style={[styles.sheetOptionDot, { backgroundColor: p.color }]} />
+                    <Text style={[styles.sheetOptionText, priority === p.value && styles.sheetOptionTextActive]}>
+                      {p.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Category picker */}
+            {activeSheet === 'category' && (
+              <View style={styles.sheetBody}>
+                <Text style={styles.sheetTitle}>Kategoria</Text>
+                {CATEGORIES.map(c => (
+                  <TouchableOpacity
+                    key={c.value}
+                    style={[styles.sheetOption, category === c.value && styles.sheetOptionActive]}
+                    onPress={() => {
+                      setCategory(c.value);
+                      setActiveSheet(null);
+                    }}
+                  >
+                    <Text style={[styles.sheetOptionText, category === c.value && styles.sheetOptionTextActive]}>
+                      {c.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Date picker inline info */}
+            {activeSheet === 'date' && (
+              <View style={styles.sheetBody}>
+                <Text style={styles.sheetTitle}>Hatarido</Text>
+                <TouchableOpacity
+                  style={styles.sheetOption}
+                  onPress={() => {
+                    setActiveSheet(null);
+                    if (Platform.OS !== 'web') setShowDatePicker(true);
+                  }}
+                >
+                  <Feather name="calendar" size={18} color={Colors.primary} />
+                  <Text style={styles.sheetOptionText}>
+                    {dueDate ? dueDate.toLocaleDateString('hu-HU') : 'Datum valasztasa'}
+                  </Text>
+                </TouchableOpacity>
+                {dueDate && (
+                  <TouchableOpacity
+                    style={styles.sheetOption}
+                    onPress={() => {
+                      setDueDate(null);
+                      setActiveSheet(null);
+                    }}
+                  >
+                    <Feather name="x" size={18} color="#EF4444" />
+                    <Text style={[styles.sheetOptionText, { color: '#EF4444' }]}>Hatarido torlese</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -423,250 +761,297 @@ export default function CreateNote() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: SCREEN_BG,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: HEADER_PADDING_TOP,
+    paddingBottom: Spacing.md,
   },
-  headerButton: {
-    padding: 8,
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.textWhite,
+  headerBtn: {
+    minWidth: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
   },
-  saveButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: Colors.primary,
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitleText: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
+    color: '#FFFFFF',
   },
   saveButtonText: {
-    color: Colors.textWhite,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+    fontWeight: FontWeight.medium,
   },
-  content: {
+  savedButtonRow: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Editor
+  editorWrapper: {
     flex: 1,
   },
-  contentContainer: {
-    padding: 20,
+  editor: {
+    flex: 1,
+  },
+  editorContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: 40,
   },
   titleInput: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.textWhite,
-    marginBottom: 16,
-    minHeight: 50,
+    fontSize: 22,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
+    padding: 0,
+    marginBottom: Spacing.sm,
   },
   contentInput: {
-    fontSize: 16,
-    color: Colors.textWhite,
-    lineHeight: 24,
-    minHeight: 200,
-    marginBottom: 24,
+    fontSize: FontSize.lg,
+    color: '#FFFFFF',
+    lineHeight: 26,
+    padding: 0,
+    minHeight: 300,
   },
-  actionBar: {
-    gap: 24,
-  },
-  actionSection: {
-    gap: 12,
-  },
-  actionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  projectOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginRight: 8,
-    gap: 6,
-  },
-  projectOptionActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  projectDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  projectOptionText: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    fontWeight: '600',
-  },
-  projectOptionTextActive: {
-    color: Colors.textWhite,
-  },
-  priorityContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  priorityOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 6,
-  },
-  priorityOptionActive: {
-    backgroundColor: Colors.card,
-    borderColor: Colors.primary,
-    borderWidth: 2,
-  },
-  priorityDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  priorityOptionText: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    fontWeight: '600',
-  },
-  priorityOptionTextActive: {
-    color: Colors.textWhite,
-  },
-  categoryContainer: {
+
+  // Tags display
+  tagsDisplay: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
   },
-  categoryOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  categoryOptionActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  categoryOptionText: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    fontWeight: '600',
-  },
-  categoryOptionTextActive: {
-    color: Colors.textWhite,
-  },
-  tagInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.inputBg,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 12,
-  },
-  tagInput: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.textWhite,
-    paddingVertical: 10,
-  },
-  tagAddButton: {
-    padding: 8,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  tagChip: {
+  tagPill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    gap: 4,
   },
-  tagChipText: {
-    fontSize: 12,
-    color: Colors.textWhite,
-    fontWeight: '600',
+  tagPillText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
   },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
+
+  // Attachments
+  attachmentsRow: {
+    marginTop: Spacing.lg,
   },
-  dateButtonText: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.textWhite,
-    fontWeight: '600',
-  },
-  dateRemoveButton: {
-    padding: 4,
-  },
-  photoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  photoButtonText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  attachmentsContainer: {
-    marginTop: 8,
-  },
-  attachmentItem: {
+  attachmentThumb: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: Spacing.md,
   },
-  attachmentImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
+  attachmentImg: {
+    width: 80,
+    height: 80,
+    borderRadius: Radius.md,
   },
   attachmentRemove: {
     position: 'absolute',
     top: 4,
     right: 4,
     backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Toolbar
+  toolbar: {
+    borderTopWidth: 1,
+    borderTopColor: BORDER_COLOR,
+    backgroundColor: SCREEN_BG,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+  },
+  toolbarContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  toolbarItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+    backgroundColor: CARD_BG,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    gap: 6,
+    marginRight: 4,
+  },
+  toolbarColorDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  toolbarLabel: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    fontWeight: FontWeight.semibold,
+  },
+
+  // Menu
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: HEADER_PADDING_TOP + 44,
+    paddingRight: Spacing.xl,
+  },
+  menuContent: {
+    backgroundColor: CARD_BG,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    overflow: 'hidden',
+    minWidth: 180,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.md,
+  },
+  menuItemText: {
+    fontSize: FontSize.lg,
+    color: Colors.textMuted,
+    fontWeight: FontWeight.medium,
+  },
+
+  // Bottom sheet
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  sheetContent: {
+    backgroundColor: SCREEN_BG,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    maxHeight: '60%',
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: BORDER_COLOR,
+    alignSelf: 'center',
+    marginTop: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  sheetBody: {
+    paddingHorizontal: Spacing.xl,
+  },
+  sheetTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
+    marginBottom: Spacing.lg,
+  },
+
+  // Color grid
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+  },
+  colorOption: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorOptionActive: {
+    borderColor: '#FFFFFF',
+  },
+
+  // Sheet option
+  sheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.lg,
+    gap: Spacing.md,
+    marginBottom: Spacing.xs,
+  },
+  sheetOptionActive: {
+    backgroundColor: Colors.primary + '20',
+  },
+  sheetOptionDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  sheetOptionText: {
+    fontSize: FontSize.lg,
+    color: Colors.textMuted,
+    fontWeight: FontWeight.semibold,
+  },
+  sheetOptionTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // Tag input in sheet
+  tagInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CARD_BG,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  tagInput: {
+    flex: 1,
+    fontSize: FontSize.md,
+    color: '#FFFFFF',
+    paddingVertical: Spacing.md,
+  },
+  tagAddBtn: {
+    padding: Spacing.sm,
+  },
+  sheetTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  sheetTagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+    gap: 4,
+  },
+  sheetTagText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
   },
 });

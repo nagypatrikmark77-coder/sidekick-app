@@ -16,7 +16,7 @@ import {
   type HabitFrequency,
   type HabitCategory,
 } from '@/lib/habits-service';
-import { CATEGORY_LABELS } from '@/types/database';
+import { CATEGORY_LABELS, type EnergyLevel } from '@/types/database';
 import { Colors, PresetColors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -38,6 +38,12 @@ const CATEGORIES: { value: HabitCategory; label: string }[] = [
   { value: 'tanulás', label: 'Tanulás' },
   { value: 'sport', label: 'Sport' },
   { value: 'egyéb', label: 'Egyéb' },
+];
+
+const ENERGY_LEVELS: { value: EnergyLevel; label: string; icon: string; color: string }[] = [
+  { value: 'low', label: 'Alacsony', icon: 'battery', color: Colors.success },
+  { value: 'medium', label: 'Közepes', icon: 'zap', color: Colors.warning },
+  { value: 'high', label: 'Magas', icon: 'zap', color: Colors.error },
 ];
 
 const DAYS = [
@@ -62,6 +68,7 @@ export default function CreateHabit() {
   const [customDays, setCustomDays] = useState<number[]>([]);
   const [category, setCategory] = useState<HabitCategory>('egyéb');
   const [targetCount, setTargetCount] = useState(1);
+  const [energyLevel, setEnergyLevel] = useState<EnergyLevel>('medium');
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
 
@@ -83,6 +90,7 @@ export default function CreateHabit() {
         setCustomDays(habit.custom_days || []);
         setCategory(habit.category);
         setTargetCount(habit.target_count);
+        setEnergyLevel(habit.energy_level || 'medium');
         setEditing(true);
       }
     } catch (error) {
@@ -122,6 +130,7 @@ export default function CreateHabit() {
         custom_days: frequency === 'custom' ? customDays : null,
         category,
         target_count: targetCount,
+        energy_level: energyLevel,
         is_archived: false,
       };
 
@@ -296,6 +305,37 @@ export default function CreateHabit() {
                   ]}
                 >
                   {cat.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Energia szint</Text>
+          <View style={styles.frequencyContainer}>
+            {ENERGY_LEVELS.map(level => (
+              <TouchableOpacity
+                key={level.value}
+                style={[
+                  styles.frequencyOption,
+                  energyLevel === level.value && { backgroundColor: level.color, borderColor: level.color },
+                ]}
+                onPress={() => setEnergyLevel(level.value)}
+              >
+                <Feather
+                  name={level.icon as any}
+                  size={14}
+                  color={energyLevel === level.value ? Colors.textWhite : Colors.textMuted}
+                  style={{ marginBottom: 2 }}
+                />
+                <Text
+                  style={[
+                    styles.frequencyText,
+                    energyLevel === level.value && styles.frequencyTextActive,
+                  ]}
+                >
+                  {level.label}
                 </Text>
               </TouchableOpacity>
             ))}

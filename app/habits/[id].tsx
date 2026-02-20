@@ -41,7 +41,7 @@ function CalendarHeatmap({ habitId, habit }: { habitId: string; habit: Habit }) 
 
       const logMap: Record<string, number> = {};
       habitLogs.forEach(log => {
-        logMap[log.date] = log.count;
+        logMap[log.completed_at] = log.count;
       });
 
       setLogs(logMap);

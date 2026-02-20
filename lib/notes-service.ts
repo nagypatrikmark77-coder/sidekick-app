@@ -20,23 +20,42 @@ export const notesService = {
   async getNotes(projectId?: string | null): Promise<Note[]> {
     const session = await getSession();
 
+    console.log('[notes-service] getNotes called');
+    console.log('[notes-service] User ID:', session.user.id);
+    console.log('[notes-service] Project ID filter:', projectId);
+
     let query = supabase
       .from('notes')
       .select('*')
       .eq('user_id', session.user.id)
-      .order('pinned', { ascending: false })
-      .order('created_at', { ascending: false });
+      .order('is_pinned', { ascending: false })
+      .order('updated_at', { ascending: false });
 
     if (projectId !== undefined) {
       if (projectId === null) {
         query = query.is('project_id', null);
+        console.log('[notes-service] Filtering: project_id is null');
       } else {
         query = query.eq('project_id', projectId);
+        console.log('[notes-service] Filtering: project_id =', projectId);
       }
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    
+    if (error) {
+      console.error('[notes-service] Error fetching notes:', error);
+      console.error('[notes-service] Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      throw error;
+    }
+
+    console.log('[notes-service] Fetched notes:', data?.length || 0);
+    console.log('[notes-service] Notes data:', data);
     return data || [];
   },
 
@@ -59,6 +78,9 @@ export const notesService = {
 
   async createNote(note: Omit<Note, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Note> {
     const session = await getSession();
+    
+    console.log('[notes-service] Creating note with user_id:', session.user.id);
+    console.log('[notes-service] Note data:', { ...note, user_id: session.user.id });
 
     const { data, error } = await supabase
       .from('notes')
@@ -66,12 +88,27 @@ export const notesService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[notes-service] Error creating note:', error);
+      console.error('[notes-service] Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      throw error;
+    }
+    
+    console.log('[notes-service] Note created successfully:', data);
     return data;
   },
 
   async updateNote(id: string, updates: Partial<Omit<Note, 'id' | 'user_id' | 'created_at'>>): Promise<Note> {
     const session = await getSession();
+
+    console.log('[notes-service] Updating note:', id);
+    console.log('[notes-service] Updates:', updates);
+    console.log('[notes-service] User ID:', session.user.id);
 
     const { data, error } = await supabase
       .from('notes')
@@ -81,7 +118,18 @@ export const notesService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[notes-service] Error updating note:', error);
+      console.error('[notes-service] Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      throw error;
+    }
+
+    console.log('[notes-service] Note updated successfully:', data);
     return data;
   },
 
@@ -102,7 +150,7 @@ export const notesService = {
   async togglePin(id: string): Promise<Note> {
     const note = await this.getNote(id);
     if (!note) throw new Error('Note not found');
-    return this.updateNote(id, { pinned: !note.pinned });
+    return this.updateNote(id, { is_pinned: !note.is_pinned });
   },
 };
 
@@ -239,6 +287,7 @@ export const attachmentsService = {
       .from('note_attachments')
       .insert({
         note_id: noteId,
+        user_id: session.user.id,
         file_path: filePath,
         file_name: fileName,
         file_size: blob.size,

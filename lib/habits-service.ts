@@ -16,6 +16,10 @@ export const habitsService = {
   async getHabits(includeArchived = false): Promise<Habit[]> {
     const session = await getSession();
 
+    console.log('[habits-service] getHabits called');
+    console.log('[habits-service] User ID:', session.user.id);
+    console.log('[habits-service] Include archived:', includeArchived);
+
     let query = supabase
       .from('habits')
       .select('*')
@@ -24,10 +28,26 @@ export const habitsService = {
 
     if (!includeArchived) {
       query = query.eq('is_archived', false);
+      console.log('[habits-service] Filtering: is_archived = false');
+    } else {
+      console.log('[habits-service] Including archived habits');
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    
+    if (error) {
+      console.error('[habits-service] Error fetching habits:', error);
+      console.error('[habits-service] Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      throw error;
+    }
+
+    console.log('[habits-service] Fetched habits:', data?.length || 0);
+    console.log('[habits-service] Habits data:', data);
     return data || [];
   },
 
@@ -111,7 +131,7 @@ export const habitLogsService = {
       .from('habit_logs')
       .select('*')
       .eq('habit_id', habitId)
-      .eq('date', date)
+      .eq('completed_at', date)
       .eq('user_id', session.user.id)
       .single();
 
@@ -127,7 +147,7 @@ export const habitLogsService = {
     } else {
       const { data, error } = await supabase
         .from('habit_logs')
-        .insert({ habit_id: habitId, date, count, user_id: session.user.id })
+        .insert({ habit_id: habitId, completed_at: date, count, user_id: session.user.id })
         .select()
         .single();
       if (error) throw error;
@@ -142,7 +162,7 @@ export const habitLogsService = {
       .from('habit_logs')
       .delete()
       .eq('habit_id', habitId)
-      .eq('date', date)
+      .eq('completed_at', date)
       .eq('user_id', session.user.id);
 
     if (error) throw error;
@@ -156,10 +176,10 @@ export const habitLogsService = {
       .select('*')
       .eq('habit_id', habitId)
       .eq('user_id', session.user.id)
-      .order('date', { ascending: false });
+      .order('completed_at', { ascending: false });
 
-    if (startDate) query = query.gte('date', startDate);
-    if (endDate) query = query.lte('date', endDate);
+    if (startDate) query = query.gte('completed_at', startDate);
+    if (endDate) query = query.lte('completed_at', endDate);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -173,7 +193,7 @@ export const habitLogsService = {
       .from('habit_logs')
       .select('*')
       .eq('habit_id', habitId)
-      .eq('date', date)
+      .eq('completed_at', date)
       .eq('user_id', session.user.id)
       .single();
 
@@ -249,14 +269,14 @@ export const habitsStatsService = {
     const habit = await habitsService.getHabit(habitId);
     if (!habit || logs.length === 0) return 0;
 
-    const sortedLogs = logs.sort((a, b) => a.date.localeCompare(b.date));
+    const sortedLogs = logs.sort((a, b) => a.completed_at.localeCompare(b.completed_at));
 
     let longestStreak = 0;
     let currentStreak = 0;
     let lastDate: Date | null = null;
 
     for (const log of sortedLogs) {
-      const logDate = new Date(log.date);
+      const logDate = new Date(log.completed_at);
       if (log.count >= habit.target_count) {
         if (lastDate) {
           const daysDiff = Math.floor((logDate.getTime() - lastDate.getTime()) / 86400000);
@@ -302,7 +322,7 @@ export const habitsStatsService = {
       if (this.shouldHabitBeDoneOnDate(habit, date)) {
         expectedDays++;
         const dateStr = date.toISOString().split('T')[0];
-        const log = logs.find(l => l.date === dateStr);
+        const log = logs.find(l => l.completed_at === dateStr);
         if (log && log.count >= habit.target_count) {
           completedDays++;
         }

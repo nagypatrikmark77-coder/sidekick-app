@@ -15,7 +15,7 @@ import { notesService, projectsService, type Note, type Project } from '@/lib/no
 import { supabase } from '@/lib/supabase';
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -337,6 +337,13 @@ export default function Dashboard() {
     if (user) loadData();
   }, [user, loadData]);
 
+  // Refresh when screen comes into focus (e.g., after creating/editing a note)
+  useFocusEffect(
+    useCallback(() => {
+      if (user) loadData();
+    }, [user, loadData])
+  );
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadData();
@@ -361,7 +368,7 @@ export default function Dashboard() {
         tags: actionType === 'feladat' ? ['feladat'] : [],
         project_id: null,
         due_date: null,
-        pinned: false,
+        is_pinned: false,
       });
       setThoughtText('');
       setThoughtSaved(true);
