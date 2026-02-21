@@ -9,15 +9,66 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { chatService, type ChatMessage } from '@/lib/chat-service';
+import { chatService, type ChatMessage, type AgentType } from '@/lib/chat-service';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight, HEADER_PADDING_TOP } from '@/constants/theme';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 const WELCOME_MESSAGE = 'Szia! Én vagyok a Sidekick AI asszisztensed. Miben segíthetek?';
+
+// TODO: Add agent selector UI (chat, thought_interpreter, assistant)
+
+function TypingIndicator() {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animate = (dot: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ])
+      );
+
+    const a1 = animate(dot1, 0);
+    const a2 = animate(dot2, 200);
+    const a3 = animate(dot3, 400);
+    a1.start();
+    a2.start();
+    a3.start();
+
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, []);
+
+  const dotStyle = (anim: Animated.Value) => ({
+    opacity: anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
+    transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
+  });
+
+  return (
+    <View style={[styles.messageRow]}>
+      <View style={styles.botAvatar}>
+        <Feather name="cpu" size={16} color={Colors.primary} />
+      </View>
+      <View style={[styles.messageBubble, styles.assistantBubble, styles.typingBubble]}>
+        <View style={styles.typingDots}>
+          <Text style={styles.typingLabel}>Gondolkodom</Text>
+          {[dot1, dot2, dot3].map((dot, i) => (
+            <Animated.Text key={i} style={[styles.typingDot, dotStyle(dot)]}>
+              .
+            </Animated.Text>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
 
 export default function Chat() {
   const { user } = useAuth();
@@ -27,12 +78,15 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
+  // TODO: Add agent selector UI (chat, thought_interpreter, assistant)
+  const [currentAgent] = useState<AgentType>('chat');
+
   const loadMessages = useCallback(async () => {
     try {
-      const data = await chatService.getMessages();
+      const data = await chatService.getMessages(50);
       setMessages(data);
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error('[chat.tsx] Error loading messages:', error);
     } finally {
       setLoading(false);
     }
@@ -42,30 +96,41 @@ export default function Chat() {
     if (user) loadMessages();
   }, [user, loadMessages]);
 
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, []);
+
   const handleSend = async () => {
     const text = inputText.trim();
-    if (!text || sending) return;
+    if (!text) return;
 
     setInputText('');
     setSending(true);
 
     try {
-      // Save user message
+      // Azonnal mentjük és megjelenítjük a felhasználó üzenetét
       const userMsg = await chatService.saveMessage('user', text);
       setMessages(prev => [...prev, userMsg]);
+      scrollToBottom();
 
-      // Send to webhook and get response
-      const reply = await chatService.sendToWebhook(text);
+      // Webhook hívás az n8n felé
+      const reply = await chatService.sendToWebhook(text, currentAgent);
 
-      // Save assistant response
+      // Asszisztens válasz mentése és megjelenítése
       const assistantMsg = await chatService.saveMessage('assistant', reply);
       setMessages(prev => [...prev, assistantMsg]);
+      scrollToBottom();
     } catch (error) {
-      console.error('Error sending message:', error);
-      // Show error in chat
+      console.error('[chat.tsx] Error sending message:', error);
       try {
-        const errorMsg = await chatService.saveMessage('assistant', 'Hiba történt, próbáld újra.');
+        const errorMsg = await chatService.saveMessage(
+          'assistant',
+          'Hiba történt a kapcsolódásban. Ellenőrizd az internetkapcsolatod.'
+        );
         setMessages(prev => [...prev, errorMsg]);
+        scrollToBottom();
       } catch {
         Alert.alert('Hiba', 'Nem sikerült elküldeni az üzenetet.');
       }
@@ -133,17 +198,6 @@ export default function Chat() {
     </View>
   );
 
-  const renderTypingIndicator = () => (
-    <View style={[styles.messageRow]}>
-      <View style={styles.botAvatar}>
-        <Feather name="cpu" size={16} color={Colors.primary} />
-      </View>
-      <View style={[styles.messageBubble, styles.assistantBubble, styles.typingBubble]}>
-        <Text style={styles.typingText}>Gondolkodom...</Text>
-      </View>
-    </View>
-  );
-
   if (loading) {
     return (
       <View style={styles.container}>
@@ -187,9 +241,9 @@ export default function Chat() {
             messages.length === 0 && styles.messagesListEmpty,
           ]}
           ListEmptyComponent={renderEmpty}
-          ListFooterComponent={sending ? renderTypingIndicator : null}
+          ListFooterComponent={sending ? <TypingIndicator /> : null}
           onContentSizeChange={() => {
-            if (messages.length > 0) {
+            if (messages.length > 0 || sending) {
               flatListRef.current?.scrollToEnd({ animated: true });
             }
           }}
@@ -204,21 +258,16 @@ export default function Chat() {
             onChangeText={setInputText}
             multiline
             maxLength={2000}
-            editable={!sending}
             onSubmitEditing={handleSend}
             blurOnSubmit={false}
           />
           <TouchableOpacity
-            style={[styles.sendButton, (!inputText.trim() || sending) && styles.sendButtonDisabled]}
+            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
             onPress={handleSend}
-            disabled={!inputText.trim() || sending}
+            disabled={!inputText.trim()}
             activeOpacity={0.7}
           >
-            {sending ? (
-              <ActivityIndicator size="small" color={Colors.textWhite} />
-            ) : (
-              <Feather name="send" size={20} color={Colors.textWhite} />
-            )}
+            <Feather name="send" size={20} color={Colors.textWhite} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -347,10 +396,20 @@ const styles = StyleSheet.create({
   typingBubble: {
     paddingVertical: Spacing.md,
   },
-  typingText: {
+  typingDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typingLabel: {
     fontSize: FontSize.md,
     color: Colors.textMuted,
     fontStyle: 'italic',
+  },
+  typingDot: {
+    fontSize: FontSize.lg,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+    fontWeight: FontWeight.bold,
   },
   inputContainer: {
     flexDirection: 'row',
