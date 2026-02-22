@@ -1,11 +1,8 @@
 import { supabase } from './supabase';
 import { N8N_WEBHOOK_URL, WEBHOOK_TIMEOUT_MS } from '@/constants/api';
-import type { ChatMessage, ChatRole } from '@/types/database';
+import type { ChatMessage, ChatRole, AgentType } from '@/types/database';
 
-export type { ChatMessage, ChatRole } from '@/types/database';
-
-// TODO: Add agent selector UI (chat, thought_interpreter, assistant)
-export type AgentType = 'chat' | 'thought_interpreter' | 'assistant';
+export type { ChatMessage, ChatRole, AgentType } from '@/types/database';
 
 async function getSession() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -14,13 +11,14 @@ async function getSession() {
 }
 
 export const chatService = {
-  async getMessages(limit = 50): Promise<ChatMessage[]> {
+  async getMessages(agent: AgentType, limit = 50): Promise<ChatMessage[]> {
     const session = await getSession();
 
     const { data, error } = await supabase
       .from('chat_messages')
       .select('*')
       .eq('user_id', session.user.id)
+      .eq('agent', agent)
       .order('created_at', { ascending: true })
       .limit(limit);
 
@@ -28,7 +26,7 @@ export const chatService = {
     return data || [];
   },
 
-  async saveMessage(role: ChatRole, content: string): Promise<ChatMessage> {
+  async saveMessage(role: ChatRole, content: string, agent: AgentType): Promise<ChatMessage> {
     const session = await getSession();
 
     const { data, error } = await supabase
@@ -37,6 +35,7 @@ export const chatService = {
         user_id: session.user.id,
         role,
         content,
+        agent,
       })
       .select()
       .single();
@@ -45,7 +44,7 @@ export const chatService = {
     return data;
   },
 
-  async sendToWebhook(message: string, agent: AgentType = 'chat'): Promise<string> {
+  async sendToWebhook(message: string, agent: AgentType): Promise<string> {
     const session = await getSession();
 
     const controller = new AbortController();
@@ -91,13 +90,14 @@ export const chatService = {
     }
   },
 
-  async clearConversation(): Promise<void> {
+  async clearConversation(agent: AgentType): Promise<void> {
     const session = await getSession();
 
     const { error } = await supabase
       .from('chat_messages')
       .delete()
-      .eq('user_id', session.user.id);
+      .eq('user_id', session.user.id)
+      .eq('agent', agent);
 
     if (error) throw error;
   },

@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
 
-const supabaseUrl = 'https://hqfynnoifimsrmhoxsea.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZnlubm9pZmltc3JtaG94c2VhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NTM0MjIsImV4cCI6MjA4NTAyOTQyMn0.-KPsLZh8lRc8-SDSASzFy9BJlGq34g2x-paJEgfueqg'
+export const supabaseUrl = 'https://hqfynnoifimsrmhoxsea.supabase.co'
+export const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZnlubm9pZmltc3JtaG94c2VhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NTM0MjIsImV4cCI6MjA4NTAyOTQyMn0.-KPsLZh8lRc8-SDSASzFy9BJlGq34g2x-paJEgfueqg'
 
 const storage = Platform.OS === 'web'
   ? {

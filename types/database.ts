@@ -82,11 +82,14 @@ export interface HabitStats {
 // ── Chat ──────────────────────────────────────────────────────────────────────
 export type ChatRole = 'user' | 'assistant';
 
+export type AgentType = 'chat' | 'assistant' | 'thought_interpreter';
+
 export interface ChatMessage {
   id: string;
   user_id: string;
   role: ChatRole;
   content: string;
+  agent: AgentType;
   created_at: string;
 }
 

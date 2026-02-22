@@ -5,4 +5,4 @@ export const N8N_WEBHOOK_URL =
 
 // ── Timeout ──────────────────────────────────────────────────────────────────
 
-export const WEBHOOK_TIMEOUT_MS = 15_000;
+export const WEBHOOK_TIMEOUT_MS = 60_000;
